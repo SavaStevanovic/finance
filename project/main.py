@@ -4,4 +4,4 @@ from data.storage.sqlite import Sqlite
 
 db = Sqlite("example.db")
 writer = Yahoo()
-db.write(writer.write(writer.tickers[10]))
+db.write(writer.history(writer.tickers[10]))

@@ -1,3 +1,4 @@
+import datetime
 import typing
 import pandas as pd
 import yfinance as yf
@@ -19,4 +20,6 @@ class Yahoo:
 
     def history(self, ticket: str, period: typing.Optional[str] = None) -> pd.DataFrame:
         period = period if period else "max"
-        return yf.Ticker(ticket).history(period=period)
+        data = yf.Ticker(ticket).history(period=period)
+        data.index = pd.to_datetime(data.index, format="%Y-%m-%d %H:%M:%S%z")
+        return data

@@ -13,3 +13,4 @@ cached_property
 
 yfinance
 yahoo-fin
+psycopg2-binary
