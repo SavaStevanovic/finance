@@ -10,3 +10,6 @@ torch-tb-profiler
 tensorboard
 torchsummary
 cached_property
+
+yfinance
+yahoo-fin
