@@ -8,7 +8,7 @@ class Sqlite:
         self._conn = sqlite3.connect(db_path)
 
     def write(self, data: pd.DataFrame) -> None:
-        data.to_sql("my_table", self._conn, if_exists="replace", index=True)
+        data.to_sql("my_table", self._conn, if_exists="append")
 
     def __del__(self):
         self._conn.close()
