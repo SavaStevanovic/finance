@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 4,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -105,9 +105,9 @@
             "type": "frser-sqlite-datasource",
             "uid": "bf8ab670-92e4-4fea-b04a-871b7b59dfaa"
           },
-          "queryText": "SELECT strftime('%s', Date) as time, Close from my_table",
+          "queryText": "SELECT strftime('%s', Date) as time, Close from my_table where Symbol='$symbol'",
           "queryType": "table",
-          "rawQueryText": "SELECT strftime('%s', Date) as time, Close from my_table",
+          "rawQueryText": "SELECT strftime('%s', Date) as time, Close from my_table where Symbol='$symbol'",
           "refId": "A",
           "timeColumns": [
             "time",
@@ -130,12 +130,37 @@
       "type": "row"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "A",
+          "value": "A"
+        },
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "bf8ab670-92e4-4fea-b04a-871b7b59dfaa"
+        },
+        "definition": "select DISTINCT(Symbol) from my_table",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Symbol",
+        "multi": false,
+        "name": "symbol",
+        "options": [],
+        "query": "select DISTINCT(Symbol) from my_table",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "2021-03-25T04:00:00.000Z",
@@ -143,8 +168,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "New dashboard Copy",
-  "uid": "bef312d0-6254-4217-92bf-926ac8478b81",
+  "title": "Financial Dashboard",
+  "uid": "d72da438-e822-4bf2-b27f-1f4c3bda64b8",
   "version": 1,
   "weekStart": ""
 }
