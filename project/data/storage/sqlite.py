@@ -10,5 +10,11 @@ class Sqlite:
     def write(self, data: pd.DataFrame) -> None:
         data.to_sql("my_table", self._conn, if_exists="append")
 
+    def read(self, filter: dict) -> pd.DataFrame:
+        query = "select * from my_table"
+        if filter:
+            query += f" where " + " and ".join(f"{k}='{v}'" for k, v in filter.items())
+        return pd.read_sql_query(query + " limit 10000", self._conn)
+
     def __del__(self):
         self._conn.close()
