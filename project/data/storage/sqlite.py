@@ -14,7 +14,7 @@ class Sqlite:
         query = "select * from my_table"
         if filter:
             query += f" where " + " and ".join(f"{k}='{v}'" for k, v in filter.items())
-        return pd.read_sql_query(query + " limit 10000", self._conn)
+        return pd.read_sql_query(query, self._conn)
 
     def __del__(self):
         self._conn.close()

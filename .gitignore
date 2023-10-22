@@ -1,3 +1,4 @@
 *__pycache__
 *.db
 project/.vscode/launch.json
+*/lightning_logs/*

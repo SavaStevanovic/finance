@@ -1,15 +1,14 @@
 import pandas as pd
-from torch.utils.data import Dataset
+import torch
 
 
-class TimeSeriesDataset(Dataset):
+class TimeSeriesDataset(torch.utils.data.Dataset):
     def __init__(self, data: pd.DataFrame, sequence_length: int):
-        self._data = data
         self._sequence_length = sequence_length
-        cols = list(self._data.columns)
+        cols = list(data.columns)
         cols.remove("Symbol")
         self._groups = {
-            key: subdata[cols] for key, subdata in self._data.groupby("Symbol")[cols]
+            key: subdata[cols] for key, subdata in data.groupby("Symbol")[cols]
         }
         self._ids = [
             (k, kid)
@@ -23,5 +22,6 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
-
-        return sequence
+        return torch.tensor(
+            sequence.drop(columns=["Date"]).fillna(0)[["Open"]].astype("float32").values
+        )
