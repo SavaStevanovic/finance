@@ -1,15 +1,12 @@
+import typing
 import pandas as pd
 import torch
 
 
 class TimeSeriesDataset(torch.utils.data.Dataset):
-    def __init__(self, data: pd.DataFrame, sequence_length: int):
+    def __init__(self, groups: typing.Dict[str, pd.DataFrame], sequence_length: int):
         self._sequence_length = sequence_length
-        cols = list(data.columns)
-        cols.remove("Symbol")
-        self._groups = {
-            key: subdata[cols] for key, subdata in data.groupby("Symbol")[cols]
-        }
+        self._groups = groups
         self._ids = [
             (k, kid)
             for k, v in self._groups.items()

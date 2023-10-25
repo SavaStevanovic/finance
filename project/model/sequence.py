@@ -30,10 +30,26 @@ class SequencePredictionModel(pl.LightningModule):
         x, y = batch[:, :-1], batch[:, 1:]
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
-        # mae = torch.abs(y - y_pred).mean()
-        self.log("train_loss", loss.item(), on_step=False, on_epoch=True, prog_bar=True)
-        # self.log("train_mae", mae)
-        return loss
+        if loss.item() == loss.item():
+            # mae = torch.abs(y - y_pred).mean()
+            self.log(
+                "train_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
+            )
+            # self.log("train_mae", mae)
+            return loss
+        print(f"doom {k}")
+        exit()
+
+    def validation_step(self, batch):
+        x, y = batch[:, :-1], batch[:, 1:]
+
+        y_pred, _ = self(x)
+        loss = self._loss(y_pred, y)
+        mae = torch.abs(y - y_pred).mean()
+        self.log(
+            "validation_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
+        )
+        self.log("validation_mae", mae)
 
     def predict_step(self, x, length: int):
         t = x
