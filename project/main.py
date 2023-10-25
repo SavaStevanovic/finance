@@ -62,7 +62,7 @@ val_dataloader = DataLoader(
 )
 
 model = SequencePredictionModel(
-    train_dataset[0].shape[1], 64, train_dataset[0].shape[1], 1, seq_length
+    train_dataset[0][0].shape[1], 64, train_dataset[0][1].shape[1], 1, seq_length
 )
 trainer = pl.Trainer(
     max_epochs=30, gradient_clip_val=0.0, gradient_clip_algorithm="value"

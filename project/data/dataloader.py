@@ -19,6 +19,7 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
-        return torch.tensor(
-            sequence.drop(columns=["Date"]).fillna(0)[["Open"]].astype("float32").values
+        sequence = sequence.drop(columns=["Date"]).astype("float32")
+        return torch.tensor(sequence.values[:-1]), torch.tensor(
+            sequence[["Open"]].values[1:]
         )

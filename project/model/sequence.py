@@ -27,7 +27,7 @@ class SequencePredictionModel(pl.LightningModule):
         return self.fc(state[0]), state
 
     def training_step(self, batch):
-        x, y = batch[:, :-1], batch[:, 1:]
+        x, y = batch
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
         if loss.item() == loss.item():
@@ -41,7 +41,7 @@ class SequencePredictionModel(pl.LightningModule):
         exit()
 
     def validation_step(self, batch):
-        x, y = batch[:, :-1], batch[:, 1:]
+        x, y = batch
 
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
