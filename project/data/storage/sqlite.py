@@ -13,7 +13,11 @@ class Sqlite:
     def read(self, filter: dict) -> pd.DataFrame:
         query = "select * from my_table"
         if filter:
-            query += f" where " + " and ".join(f"{k}='{v}'" for k, v in filter.items())
+            search = []
+            for k, v in filter.items():
+                v = [f"'{e}'" for e in v]
+                search.append(f"{k} in (" + ", ".join(v) + ")")
+            query += f" where " + " and ".join(search)
         return pd.read_sql_query(query, self._conn)
 
     def __del__(self):

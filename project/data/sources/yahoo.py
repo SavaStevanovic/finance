@@ -8,12 +8,7 @@ from data.sources.data_source import Provider
 
 class Yahoo(Provider):
     def __init__(self) -> None:
-        self._tickers = [
-            si.tickers_sp500(),
-            si.tickers_nasdaq(),
-            si.tickers_dow(),
-            si.tickers_other(),
-        ]
+        self._tickers = [si.tickers_dow()]
 
     @property
     def tickers(self) -> list:

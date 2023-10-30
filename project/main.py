@@ -24,7 +24,7 @@ s = db.read(q)
 # print(s)
 
 seq_length = 10
-data = db.read({})
+data = db.read({"Symbol": provider.tickers})
 print(data.shape)
 
 data = data.dropna(axis=1, thresh=len(data) - 5000)
@@ -51,21 +51,25 @@ print(train_dataset[0])
 print(s.head())
 
 train_dataloader = DataLoader(
-    train_dataset, batch_size=32, shuffle=False, num_workers=8, pin_memory=True
+    train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
 )
 
 val_dataloader = DataLoader(
     val_dataset,
     batch_size=256,
     shuffle=False,
-    num_workers=8,
+    num_workers=23,
 )
 
 model = SequencePredictionModel(
-    train_dataset[0][0].shape[1], 64, train_dataset[0][1].shape[1], 1, seq_length
+    train_dataset[0][0].shape[1],
+    1024,
+    train_dataset[0][1].shape[1],
+    1,
+    seq_length,
 )
 trainer = pl.Trainer(
-    max_epochs=30, gradient_clip_val=0.0, gradient_clip_algorithm="value"
+    max_epochs=30, gradient_clip_val=1, gradient_clip_algorithm="value"
 )
 
 trainer.fit(model, train_dataloader, val_dataloader)

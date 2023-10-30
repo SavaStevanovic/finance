@@ -20,6 +20,8 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = sequence.drop(columns=["Date"]).astype("float32")
-        return torch.tensor(sequence.values[:-1]), torch.tensor(
-            sequence[["Open"]].values[1:]
+        sequence = sequence.subtract(sequence.mean()).divide(sequence.std() + 1e-7)
+        return (
+            torch.tensor(sequence.values[:-1]),
+            torch.tensor(sequence[["Open"]].values[1:]),
         )

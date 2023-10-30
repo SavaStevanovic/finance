@@ -16,3 +16,4 @@ yahoo-fin
 psycopg2-binary
 sqlalchemy
 pytorch_lightning
+scikit-learn
