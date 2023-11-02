@@ -37,7 +37,7 @@ class SequencePredictionModel(pl.LightningModule):
         x, y = batch
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
-        loss = torch.clamp(loss, max=1)
+        # loss = torch.clamp(loss, max=100)
         if loss.item() == loss.item():
             mae = torch.abs(y - y_pred).mean()
             self.log(
@@ -53,7 +53,7 @@ class SequencePredictionModel(pl.LightningModule):
 
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
-        loss = torch.clamp(loss, max=1)
+        # loss = torch.clamp(loss, max=1)
         mae = torch.abs(y - y_pred).mean()
         self.log(
             "validation_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
@@ -61,8 +61,7 @@ class SequencePredictionModel(pl.LightningModule):
         self.log("validation_mae", mae)
 
     def predict_step(self, x, length: int):
-        t = x
-        x = torch.tensor(x.astype("float32")).unsqueeze(0).unsqueeze(-1).to(self.device)
+        x = x.unsqueeze(0).to(self.device)
         x, hx = self(x)
         x = x[:, -1, :]
         outs = []
@@ -72,4 +71,4 @@ class SequencePredictionModel(pl.LightningModule):
         return outs
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=0.00001)
+        return optim.Adam(self.parameters(), lr=0.001)

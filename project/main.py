@@ -23,7 +23,7 @@ print(q)
 s = db.read(q)
 # print(s)
 
-seq_length = 10
+seq_length = 100
 data = db.read({"Symbol": provider.tickers})
 print(data.shape)
 
@@ -46,7 +46,7 @@ val_data, test_data = [
 ]
 train_dataset = TimeSeriesDataset(training_data, seq_length)
 val_dataset = TimeSeriesDataset(val_data, seq_length)
-test_dataset = TimeSeriesDataset(test_data, seq_length)
+test_dataset = TimeSeriesDataset(test_data, 100)
 print(train_dataset[0])
 print(s.head())
 
@@ -65,23 +65,30 @@ model = SequencePredictionModel(
     train_dataset[0][0].shape[1],
     1024,
     train_dataset[0][1].shape[1],
-    10,
+    1,
     seq_length,
 )
 trainer = pl.Trainer(
     max_epochs=30, gradient_clip_val=1, gradient_clip_algorithm="value"
 )
 
-trainer.fit(model, train_dataloader, val_dataloader)
+# trainer.fit(model, train_dataloader, val_dataloader)
 
-# model = SequencePredictionModel.load_from_checkpoint(
-#     "lightning_logs/version_22/checkpoints/epoch=29-step=91140.ckpt",
-#     input_size=1,
-#     hidden_size=512,
-#     output_size=1,
-#     num_layers=1,
-#     seq_length=seq_length,
-# )
-seq = s["Open"].values[:100]
+model = SequencePredictionModel.load_from_checkpoint(
+    "lightning_logs/version_121/checkpoints/epoch=15-step=15488.ckpt",
+    input_size=train_dataset[0][0].shape[1],
+    hidden_size=1024,
+    output_size=train_dataset[0][1].shape[1],
+    num_layers=1,
+    seq_length=seq_length,
+)
+s = test_data["CSCO"]
+start = 5000
+seq = TimeSeriesDataset.preprocess(s.iloc[start : start + 100])
 print(model.predict_step(seq, 100))
 print(s["Open"].values.tolist()[:200])
+import numpy as np
+
+t = s["Open"].values.tolist()[start + 100 : start + 200]
+p = model.predict_step(seq, 100)
+print(np.abs(np.array(t) - np.array(p)) / np.array(t))

@@ -19,9 +19,14 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
-        sequence = sequence.drop(columns=["Date"]).astype("float32")
-        sequence = sequence.subtract(sequence.mean()).divide(sequence.std() + 1e-7)
+        sequence = self.preprocess(sequence)
         return (
-            torch.tensor(sequence.values[:-1]),
-            torch.tensor(sequence[["Open"]].values[1:]),
+            sequence[:-1],
+            sequence[1:],
         )
+
+    @staticmethod
+    def preprocess(sequence):
+        sequence = sequence.drop(columns=["Date"]).astype("float32")
+        # sequence = sequence.subtract(sequence.mean()).divide(sequence.std() + 1e-7)
+        return torch.tensor(sequence[["Open"]].values)
