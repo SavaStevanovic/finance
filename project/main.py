@@ -65,7 +65,7 @@ model = SequencePredictionModel(
     train_dataset[0][0].shape[1],
     1024,
     train_dataset[0][1].shape[1],
-    1,
+    10,
     seq_length,
 )
 trainer = pl.Trainer(

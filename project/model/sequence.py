@@ -10,34 +10,42 @@ class SequencePredictionModel(pl.LightningModule):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.seq_length = seq_length
-        self.lstm = nn.LSTMCell(input_size, hidden_size).to(self.device)
+        self.lstm = nn.ModuleList(
+            [nn.LSTMCell(input_size, hidden_size)]
+            + [nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers - 1)]
+        ).to(self.device)
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
         self._loss = nn.MSELoss()
 
     def forward(self, x):
         output = []
-        state = None
+        state = [None for _ in self.lstm]
         for i in range(x.shape[1]):
             out, state = self._forward_flow(x[:, i], state)
             output.append(out)
         return torch.stack(output, dim=1), state
 
-    def _forward_flow(self, x, state):
-        state = self.lstm(x, state)
-        return self.fc(state[0]), state
+    def _forward_flow(self, x, states):
+        new_states = []
+        for i, (layer, s) in enumerate(zip(self.lstm, states)):
+            state = layer(x, s)
+            x = state[0] if not i else x + state[0]
+            new_states.append(state)
+        return self.fc(nn.functional.relu(x)), new_states
 
     def training_step(self, batch):
         x, y = batch
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
+        loss = torch.clamp(loss, max=1)
         if loss.item() == loss.item():
-            # mae = torch.abs(y - y_pred).mean()
+            mae = torch.abs(y - y_pred).mean()
             self.log(
                 "train_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
             )
-            # self.log("train_mae", mae)
+            self.log("train_mae", mae)
             return loss
-        print(f"doom {k}")
+        print(f"doom")
         exit()
 
     def validation_step(self, batch):
@@ -45,6 +53,7 @@ class SequencePredictionModel(pl.LightningModule):
 
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
+        loss = torch.clamp(loss, max=1)
         mae = torch.abs(y - y_pred).mean()
         self.log(
             "validation_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
@@ -63,4 +72,4 @@ class SequencePredictionModel(pl.LightningModule):
         return outs
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=0.001)
+        return optim.Adam(self.parameters(), lr=0.00001)
