@@ -17,9 +17,9 @@ from sklearn.model_selection import train_test_split
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 db = Sqlite("example.db")
 provider = Yahoo()
-writer = Source(provider)
-for ticket in tqdm(provider.tickers):
-    db.write(writer.history(ticket))
+# writer = Source(provider)
+# for ticket in tqdm(provider.tickers):
+#     db.write(writer.history(ticket))
 q = {"Symbol": "A"}
 print(q)
 s = db.read(q)
@@ -34,9 +34,7 @@ data = data.dropna(axis=0)
 print(data.shape)
 cols = list(data.columns)
 cols.remove("Symbol")
-groups = {
-    key: subdata for key, subdata in data.groupby("Symbol")[cols] if len(key) == 4
-}
+groups = {key: subdata for key, subdata in data.groupby("Symbol")[cols]}
 s = pd.Series(groups)
 training_data, data = [
     i.to_dict() for i in train_test_split(s, train_size=0.7, random_state=1)
