@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from model.metrics import Seqence
+
 
 class SequencePredictionModel(pl.LightningModule):
     def __init__(self, input_size, hidden_size, output_size, num_layers, seq_length):
@@ -16,6 +18,7 @@ class SequencePredictionModel(pl.LightningModule):
         ).to(self.device)
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
         self._loss = nn.MSELoss()
+        self._metrics = [Seqence(-1), Seqence(0)]
 
     def forward(self, x):
         output = []
@@ -59,6 +62,23 @@ class SequencePredictionModel(pl.LightningModule):
             "validation_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
         )
         self.log("validation_mae", mae)
+
+    def test_step(self, batch):
+        x, _ = batch
+        for sample in x:
+            input_seq, target_seq = sample[:50], sample[50:]
+            output = self.predict_step(input_seq, len(target_seq))
+            for metric in self._metrics:
+                metric_val = metric(
+                    output, target_seq.cpu().squeeze(-1).numpy().tolist()
+                )
+                self.log(
+                    f"test_{metric.name}",
+                    metric_val,
+                    on_step=True,
+                    on_epoch=True,
+                    prog_bar=True,
+                )
 
     def predict_step(self, x, length: int):
         x = x.unsqueeze(0).to(self.device)

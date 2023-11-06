@@ -2,7 +2,9 @@ import multiprocessing
 import os
 
 import pandas as pd
+from tqdm import tqdm
 from data.dataloader import TimeSeriesDataset
+from data.sources.data_source import Source
 from data.sources.yahoo import Yahoo
 from data.storage.sqlite import Sqlite
 import pytorch_lightning as pl
@@ -15,9 +17,9 @@ from sklearn.model_selection import train_test_split
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 db = Sqlite("example.db")
 provider = Yahoo()
-# writer = Source(provider)
-# for ticket in tqdm(provider.tickers):
-#     db.write(writer.history(ticket))
+writer = Source(provider)
+for ticket in tqdm(provider.tickers):
+    db.write(writer.history(ticket))
 q = {"Symbol": "A"}
 print(q)
 s = db.read(q)
@@ -61,6 +63,13 @@ val_dataloader = DataLoader(
     num_workers=23,
 )
 
+test_dataloader = DataLoader(
+    test_dataset,
+    batch_size=1,
+    shuffle=False,
+    num_workers=23,
+)
+
 model = SequencePredictionModel(
     train_dataset[0][0].shape[1],
     1024,
@@ -72,16 +81,17 @@ trainer = pl.Trainer(
     max_epochs=30, gradient_clip_val=1, gradient_clip_algorithm="value"
 )
 
-# trainer.fit(model, train_dataloader, val_dataloader)
+trainer.fit(model, train_dataloader, val_dataloader)
 
-model = SequencePredictionModel.load_from_checkpoint(
-    "lightning_logs/version_121/checkpoints/epoch=15-step=15488.ckpt",
-    input_size=train_dataset[0][0].shape[1],
-    hidden_size=1024,
-    output_size=train_dataset[0][1].shape[1],
-    num_layers=1,
-    seq_length=seq_length,
-)
+# model = SequencePredictionModel.load_from_checkpoint(
+#     "lightning_logs/version_121/checkpoints/epoch=15-step=15488.ckpt",
+#     input_size=train_dataset[0][0].shape[1],
+#     hidden_size=1024,
+#     output_size=train_dataset[0][1].shape[1],
+#     num_layers=1,
+#     seq_length=seq_length,
+# )
+trainer.test(model, test_dataloader)
 s = test_data["CSCO"]
 start = 5000
 seq = TimeSeriesDataset.preprocess(s.iloc[start : start + 100])

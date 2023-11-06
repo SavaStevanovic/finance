@@ -34,7 +34,6 @@ class Source:
     def history(self, ticket: str, period: typing.Optional[str] = None) -> pd.DataFrame:
         period = period if period else "max"
         data = self._provider.history(ticket, period=period)
-        data.reset_index(inplace=True)
         data["Date"] = pd.to_datetime(data["Date"], format="%Y-%m-%d %H:%M:%S%z")
         for c in self._columns:
             if c not in data:
