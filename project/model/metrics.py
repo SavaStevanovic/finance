@@ -22,4 +22,6 @@ class Seqence(Metric):
         return f"Seqence_{self._distance}"
 
     def __call__(self, sample, output):
-        return abs(sample[self._distance] - output[self._distance])
+        return abs(sample[self._distance] - output[self._distance]) / (
+            sample[self._distance] + 1e-7
+        )

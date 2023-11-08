@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from pytorch_lightning import loggers as pl_loggers
 from model.sequence import SequencePredictionModel
 from sklearn.model_selection import train_test_split
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 db = Sqlite("example.db")
@@ -47,8 +48,6 @@ val_data, test_data = [
 train_dataset = TimeSeriesDataset(training_data, seq_length)
 val_dataset = TimeSeriesDataset(val_data, seq_length)
 test_dataset = TimeSeriesDataset(test_data, 100)
-print(train_dataset[0])
-print(s.head())
 
 train_dataloader = DataLoader(
     train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
@@ -75,28 +74,26 @@ model = SequencePredictionModel(
     1,
     seq_length,
 )
-trainer = pl.Trainer(
-    max_epochs=30, gradient_clip_val=1, gradient_clip_algorithm="value"
+checkpoint_callback = ModelCheckpoint(
+    monitor="validation/loss",
+    dirpath="checkpoints/",
+    filename="{epoch:02d}-val_loss{validation/loss:.2f}",
+    auto_insert_metric_name=False,
 )
+trainer = pl.Trainer(
+    max_epochs=30,
+    gradient_clip_val=1,
+    gradient_clip_algorithm="value",
+    callbacks=[checkpoint_callback],
+)
+# trainer.fit(model, train_dataloader, val_dataloader)
 
-trainer.fit(model, train_dataloader, val_dataloader)
-
-# model = SequencePredictionModel.load_from_checkpoint(
-#     "lightning_logs/version_121/checkpoints/epoch=15-step=15488.ckpt",
-#     input_size=train_dataset[0][0].shape[1],
-#     hidden_size=1024,
-#     output_size=train_dataset[0][1].shape[1],
-#     num_layers=1,
-#     seq_length=seq_length,
-# )
+model = SequencePredictionModel.load_from_checkpoint(
+    "checkpoints/04-val_loss0.32.ckpt",
+    input_size=train_dataset[0][0].shape[1],
+    hidden_size=1024,
+    output_size=train_dataset[0][1].shape[1],
+    num_layers=1,
+    seq_length=seq_length,
+)
 trainer.test(model, test_dataloader)
-s = test_data["CSCO"]
-start = 5000
-seq = TimeSeriesDataset.preprocess(s.iloc[start : start + 100])
-print(model.predict_step(seq, 100))
-print(s["Open"].values.tolist()[:200])
-import numpy as np
-
-t = s["Open"].values.tolist()[start + 100 : start + 200]
-p = model.predict_step(seq, 100)
-print(np.abs(np.array(t) - np.array(p)) / np.array(t))
