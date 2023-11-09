@@ -1,30 +1,15 @@
-import multiprocessing
-import os
-
 import pandas as pd
-from tqdm import tqdm
 from data.dataloader import TimeSeriesDataset
-from data.sources.data_source import Source
 from data.sources.yahoo import Yahoo
 from data.storage.sqlite import Sqlite
 import pytorch_lightning as pl
-import torch
-from torch.utils.data import DataLoader, TensorDataset
-from pytorch_lightning import loggers as pl_loggers
+from torch.utils.data import DataLoader
 from model.sequence import SequencePredictionModel
 from sklearn.model_selection import train_test_split
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-# os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 db = Sqlite("example.db")
 provider = Yahoo()
-# writer = Source(provider)
-# for ticket in tqdm(provider.tickers):
-#     db.write(writer.history(ticket))
-q = {"Symbol": "A"}
-print(q)
-s = db.read(q)
-# print(s)
 
 seq_length = 100
 data = db.read({"Symbol": provider.tickers})
@@ -75,13 +60,13 @@ model = SequencePredictionModel(
     seq_length,
 )
 checkpoint_callback = ModelCheckpoint(
-    monitor="validation/loss",
+    monitor="validation/LossSeqence",
     dirpath="checkpoints/",
-    filename="{epoch:02d}-val_loss{validation/loss:.2f}",
+    filename="{epoch:02d}-val_loss{validation/LossSeqence:.2f}",
     auto_insert_metric_name=False,
 )
 trainer = pl.Trainer(
-    max_epochs=30,
+    max_epochs=20,
     gradient_clip_val=1,
     gradient_clip_algorithm="value",
     callbacks=[checkpoint_callback],
@@ -89,7 +74,7 @@ trainer = pl.Trainer(
 # trainer.fit(model, train_dataloader, val_dataloader)
 
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/04-val_loss0.32.ckpt",
+    "checkpoints/11-val_loss0.31.ckpt",
     input_size=train_dataset[0][0].shape[1],
     hidden_size=1024,
     output_size=train_dataset[0][1].shape[1],

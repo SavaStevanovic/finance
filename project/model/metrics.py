@@ -1,4 +1,7 @@
 from abc import abstractmethod
+import typing
+
+import torch
 
 
 class Metric:
@@ -8,8 +11,32 @@ class Metric:
         pass
 
     @abstractmethod
-    def __call__(self, sample, output):
+    def __call__(self, output, sample):
         pass
+
+
+class Loss(Metric):
+    def __init__(self, loss: typing.Callable) -> None:
+        super().__init__()
+        self._loss = loss
+
+    @property
+    def name(self):
+        return f"LossSeqence"
+
+    def __call__(self, output, sample):
+        return self._loss(output, sample)
+
+
+class WholeSeqence(Metric):
+    @property
+    def name(self):
+        return f"WholeSeqence"
+
+    def __call__(self, output, sample):
+        return (
+            torch.abs(sample - output) / (torch.abs(sample) + torch.abs(output) + 1e-9)
+        ).mean()
 
 
 class Seqence(Metric):
@@ -21,7 +48,8 @@ class Seqence(Metric):
     def name(self):
         return f"Seqence_{self._distance}"
 
-    def __call__(self, sample, output):
+    def __call__(self, output, sample):
+        assert len(sample) == len(output)
         return abs(sample[self._distance] - output[self._distance]) / (
-            sample[self._distance] + 1e-7
+            abs(sample[self._distance]) + abs(output[self._distance])
         )

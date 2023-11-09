@@ -1,9 +1,11 @@
+import math
+import typing
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from model.metrics import Seqence
+from model.metrics import Metric, Seqence, WholeSeqence, Loss
 
 
 class SequencePredictionModel(pl.LightningModule):
@@ -19,6 +21,7 @@ class SequencePredictionModel(pl.LightningModule):
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
         self._loss = nn.MSELoss()
         self._metrics = [Seqence(-1), Seqence(0)]
+        self._iteration_metrics = [Loss(self._loss), WholeSeqence()]
 
     def forward(self, x):
         output = []
@@ -40,45 +43,44 @@ class SequencePredictionModel(pl.LightningModule):
         x, y = batch
         y_pred, _ = self(x)
         loss = self._loss(y_pred, y)
-        # loss = torch.clamp(loss, max=100)
-        if loss.item() == loss.item():
-            mae = torch.abs(y - y_pred).mean()
-            self.log(
-                "train/loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
-            )
-            self.log("train/mae", mae)
-            return loss
-        print(f"doom")
-        exit()
+        self._report("training", y_pred, y, self._iteration_metrics)
+        return loss
 
     def validation_step(self, batch):
         x, y = batch
-
         y_pred, _ = self(x)
-        loss = self._loss(y_pred, y)
-        # loss = torch.clamp(loss, max=1)
-        mae = torch.abs(y - y_pred).mean()
-        self.log(
-            "validation/loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True
-        )
-        self.log("validation/mae", mae)
+        self._report("validation", y_pred, y, self._iteration_metrics)
 
     def test_step(self, batch):
         x, _ = batch
         for sample in x:
             input_seq, target_seq = sample[:50], sample[50:]
             output = self.predict_step(input_seq, len(target_seq))
-            for metric in self._metrics:
-                metric_val = metric(
-                    output, target_seq.cpu().squeeze(-1).numpy().tolist()
-                )
-                self.log(
-                    f"test/{metric.name}",
-                    metric_val,
-                    on_step=True,
-                    on_epoch=True,
-                    prog_bar=True,
-                )
+            self._report(
+                "test",
+                output,
+                target_seq.cpu().squeeze(-1).numpy().tolist(),
+                self._metrics,
+            )
+
+    def _report(
+        self,
+        stage: str,
+        output: torch.Tensor,
+        target: torch.Tensor,
+        metrics: typing.List[Metric],
+    ):
+        if any(x == 0 for x in target):
+            return
+        for metric in metrics:
+            metric_val = metric(output, target)
+            self.log(
+                f"{stage}/{metric.name}",
+                metric_val,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+            )
 
     def predict_step(self, x, length: int):
         x = x.unsqueeze(0).to(self.device)
