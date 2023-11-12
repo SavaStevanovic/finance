@@ -4,8 +4,14 @@ import torch
 
 
 class TimeSeriesDataset(torch.utils.data.Dataset):
-    def __init__(self, groups: typing.Dict[str, pd.DataFrame], sequence_length: int):
+    def __init__(
+        self,
+        groups: typing.Dict[str, pd.DataFrame],
+        sequence_length: int,
+        features: list,
+    ):
         self._sequence_length = sequence_length
+        self._features = features
         self._groups = groups
         self._ids = [
             (k, kid)
@@ -19,14 +25,14 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
-        sequence = self.preprocess(sequence)
+        sequence = self.preprocess(sequence, self._features)
         return (
             sequence[:-1],
             sequence[1:],
         )
 
     @staticmethod
-    def preprocess(sequence):
+    def preprocess(sequence, features):
         sequence = sequence.drop(columns=["Date"]).astype("float32")
         # sequence = sequence.subtract(sequence.mean()).divide(sequence.std() + 1e-7)
-        return torch.tensor(sequence[["Open"]].values)
+        return torch.tensor(sequence[features].values)

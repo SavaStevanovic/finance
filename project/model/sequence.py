@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import numpy as np
 from model.metrics import Metric, Seqence, WholeSeqence, Loss
 
 
@@ -69,7 +69,7 @@ class SequencePredictionModel(pl.LightningModule):
             self._report(
                 "test",
                 output,
-                target_seq.cpu().squeeze(-1).numpy().tolist(),
+                target_seq.cpu().squeeze(-1).numpy(),
                 self._metrics,
             )
 
@@ -80,17 +80,18 @@ class SequencePredictionModel(pl.LightningModule):
         target: torch.Tensor,
         metrics: typing.List[Metric],
     ):
-        if any(x == 0 for x in target):
+        if not target.all():
             return
         for metric in metrics:
             metric_val = metric(output, target)
-            self.log(
-                f"{stage}/{metric.name}",
-                metric_val,
-                on_step=True,
-                on_epoch=True,
-                prog_bar=True,
-            )
+            for i, val in enumerate(metric_val):
+                self.log(
+                    f"{stage}/{metric.name}/{i}",
+                    val,
+                    on_step=True,
+                    on_epoch=True,
+                    prog_bar=True,
+                )
 
     def predict_step(self, x, length: int):
         x = x.unsqueeze(0).to(self.device)
@@ -99,8 +100,8 @@ class SequencePredictionModel(pl.LightningModule):
         outs = []
         for _ in range(length):
             x, hx = self._forward_flow(x, hx)
-            outs.append(x.item())
-        return outs
+            outs.append(x[0].cpu().numpy())
+        return np.stack(outs, 0)
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=0.001)

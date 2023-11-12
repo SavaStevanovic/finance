@@ -30,9 +30,10 @@ s = pd.Series(data)
 val_data, test_data = [
     i.to_dict() for i in train_test_split(s, train_size=0.5, random_state=1)
 ]
-train_dataset = TimeSeriesDataset(training_data, seq_length)
-val_dataset = TimeSeriesDataset(val_data, seq_length)
-test_dataset = TimeSeriesDataset(test_data, 100)
+features = ["Open", "Close"]
+train_dataset = TimeSeriesDataset(training_data, seq_length, features)
+val_dataset = TimeSeriesDataset(val_data, seq_length, features)
+test_dataset = TimeSeriesDataset(test_data, 100, features)
 
 train_dataloader = DataLoader(
     train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
@@ -74,7 +75,7 @@ trainer = pl.Trainer(
 # trainer.fit(model, train_dataloader, val_dataloader)
 
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/11-val_loss0.31.ckpt",
+    "checkpoints/00-val_loss16.21.ckpt",
     input_size=train_dataset[0][0].shape[1],
     hidden_size=1024,
     output_size=train_dataset[0][1].shape[1],
