@@ -19,9 +19,9 @@ class SequencePredictionModel(pl.LightningModule):
             + [nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers - 1)]
         ).to(self.device)
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
-        self._loss = nn.MSELoss()
+        self._loss = nn.MSELoss(reduction="none")
         self._metrics = [Seqence(-1), Seqence(0)]
-        self._iteration_metrics = [Loss(self._loss), WholeSeqence()]
+        self._iteration_metrics = [Loss(nn.MSELoss()), WholeSeqence()]
 
     def forward(self, x):
         output = []
@@ -42,14 +42,24 @@ class SequencePredictionModel(pl.LightningModule):
     def training_step(self, batch):
         x, y = batch
         y_pred, _ = self(x)
-        loss = self._loss(y_pred, y)
-        self._report("training", y_pred, y, self._iteration_metrics)
+        loss = (self._loss(y_pred, y) / (y + y_pred + 1e-9)).mean()
+        self._report(
+            "training",
+            y_pred.detach().cpu().squeeze(-1).numpy().tolist(),
+            y.cpu().squeeze(-1).numpy().tolist(),
+            self._iteration_metrics,
+        )
         return loss
 
     def validation_step(self, batch):
         x, y = batch
         y_pred, _ = self(x)
-        self._report("validation", y_pred, y, self._iteration_metrics)
+        self._report(
+            "validation",
+            y_pred.cpu().squeeze(-1).numpy().tolist(),
+            y.cpu().squeeze(-1).numpy().tolist(),
+            self._iteration_metrics,
+        )
 
     def test_step(self, batch):
         x, _ = batch

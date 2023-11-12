@@ -25,7 +25,7 @@ class Loss(Metric):
         return f"LossSeqence"
 
     def __call__(self, output, sample):
-        return self._loss(output, sample)
+        return self._loss(torch.tensor(output), torch.tensor(sample))
 
 
 class WholeSeqence(Metric):
@@ -34,6 +34,8 @@ class WholeSeqence(Metric):
         return f"WholeSeqence"
 
     def __call__(self, output, sample):
+        sample = torch.tensor(sample)
+        output = torch.tensor(output)
         return (
             torch.abs(sample - output) / (torch.abs(sample) + torch.abs(output) + 1e-9)
         ).mean()
