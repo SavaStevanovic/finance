@@ -1,3 +1,4 @@
+import collections
 import math
 import typing
 import pytorch_lightning as pl
@@ -45,8 +46,8 @@ class SequencePredictionModel(pl.LightningModule):
         loss = (self._loss(y_pred, y) / (y + y_pred + 1e-9)).mean()
         self._report(
             "training",
-            y_pred.detach().cpu().squeeze(-1).numpy().tolist(),
-            y.cpu().squeeze(-1).numpy().tolist(),
+            y_pred.detach().cpu().squeeze(-1).numpy(),
+            y.cpu().squeeze(-1).numpy(),
             self._iteration_metrics,
         )
         return loss
@@ -56,8 +57,8 @@ class SequencePredictionModel(pl.LightningModule):
         y_pred, _ = self(x)
         self._report(
             "validation",
-            y_pred.cpu().squeeze(-1).numpy().tolist(),
-            y.cpu().squeeze(-1).numpy().tolist(),
+            y_pred.cpu().squeeze(-1).numpy(),
+            y.cpu().squeeze(-1).numpy(),
             self._iteration_metrics,
         )
 
@@ -84,10 +85,21 @@ class SequencePredictionModel(pl.LightningModule):
             return
         for metric in metrics:
             metric_val = metric(output, target)
-            for i, val in enumerate(metric_val):
+            if metric_val.shape:
+                log_data = {
+                    f"{stage}/{metric.name}/{i}": val
+                    for i, val in enumerate(metric_val)
+                }
+                self.log_dict(
+                    log_data,
+                    on_step=True,
+                    on_epoch=True,
+                    prog_bar=True,
+                )
+            else:
                 self.log(
-                    f"{stage}/{metric.name}/{i}",
-                    val,
+                    f"{stage}/{metric.name}",
+                    metric_val,
                     on_step=True,
                     on_epoch=True,
                     prog_bar=True,
