@@ -19,8 +19,12 @@ class SequencePredictionModel(pl.LightningModule):
             [nn.LSTMCell(input_size, hidden_size)]
             + [nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers - 1)]
         ).to(self.device)
-        self.fc = nn.Linear(hidden_size, output_size).to(self.device)
-        self._loss = nn.MSELoss(reduction="none")
+        self._mean_layer = nn.Sequential(
+            nn.Linear(hidden_size, output_size), nn.Softplus()
+        ).to(self.device)
+        self._std_layer = nn.Sequential(
+            nn.Linear(hidden_size, output_size), nn.Softplus()
+        ).to(self.device)
         self._metrics = [Seqence(-1), Seqence(0)]
         self._iteration_metrics = [Loss(nn.MSELoss()), WholeSeqence()]
 
@@ -30,7 +34,7 @@ class SequencePredictionModel(pl.LightningModule):
         for i in range(x.shape[1]):
             out, state = self._forward_flow(x[:, i], state)
             output.append(out)
-        return torch.stack(output, dim=1), state
+        return torch.stack([x.mean for x in output], 1), state, output
 
     def _forward_flow(self, x, states):
         new_states = []
@@ -38,12 +42,18 @@ class SequencePredictionModel(pl.LightningModule):
             state = layer(x, s)
             x = state[0] if not i else x + state[0]
             new_states.append(state)
-        return self.fc(nn.functional.relu(x)), new_states
+        mean = self._mean_layer(x)
+        std = self._std_layer(x)
+        pred = torch.distributions.Normal(mean, std)
+        return pred, new_states
 
     def training_step(self, batch):
         x, y = batch
-        y_pred, _ = self(x)
-        loss = (self._loss(y_pred, y) / (y + y_pred + 1e-9)).mean()
+        y_pred, _, dist = self(x)
+        loss = torch.stack(
+            [-dist[i].log_prob(y[:, i, :]) for i in range(len(dist))]
+        ).mean()
+
         self._report(
             "training",
             y_pred.detach().cpu().squeeze(-1).numpy(),
@@ -54,7 +64,7 @@ class SequencePredictionModel(pl.LightningModule):
 
     def validation_step(self, batch):
         x, y = batch
-        y_pred, _ = self(x)
+        y_pred, _, _ = self(x)
         self._report(
             "validation",
             y_pred.cpu().squeeze(-1).numpy(),
@@ -107,11 +117,12 @@ class SequencePredictionModel(pl.LightningModule):
 
     def predict_step(self, x, length: int):
         x = x.unsqueeze(0).to(self.device)
-        x, hx = self(x)
+        x, hx, _ = self(x)
         x = x[:, -1, :]
         outs = []
         for _ in range(length):
             x, hx = self._forward_flow(x, hx)
+            x = x.mean
             outs.append(x[0].cpu().numpy())
         return np.stack(outs, 0)
 
