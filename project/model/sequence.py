@@ -7,6 +7,10 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from model.metrics import Metric, Seqence, WholeSeqence, Loss
+import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rc("figure", figsize=(50, 25))
 
 
 class SequencePredictionModel(pl.LightningModule):
@@ -76,13 +80,42 @@ class SequencePredictionModel(pl.LightningModule):
         x, _ = batch
         for sample in x:
             input_seq, target_seq = sample[:50], sample[50:]
-            output = self.predict_step(input_seq, len(target_seq))
+            output, _ = self._predict_step(input_seq, len(target_seq))
             self._report(
                 "test",
                 output,
                 target_seq.cpu().squeeze(-1).numpy(),
                 self._metrics,
             )
+
+    def backtest(self, sample):
+        sample = sample[:1000]
+        length = int(len(sample) // 2)
+        input_seq, target_seq = sample[:length], sample[length:]
+        output, sdvs = self._predict_step(input_seq, len(target_seq))
+
+        plt.xlabel("Time")
+        plt.ylabel("Value")
+        print(plt.rcParamsDefault["figure.figsize"])
+        plt.plot(input_seq[:, 0], label=f"input")
+        pred_ids = np.arange(len(input_seq), len(input_seq) + len(target_seq))
+        plt.plot(pred_ids, target_seq[:, 0], label=f"target", linewidth=2)
+        plt.plot(pred_ids, output[:, 0], label=f"output", linewidth=2.0)
+        plt.plot(
+            pred_ids, output[:, 0] + sdvs[:, 0], label=f"output + sdvs", linewidth=1
+        )
+        plt.plot(
+            pred_ids, output[:, 0] - sdvs[:, 0], label=f"output - sdvs", linewidth=1
+        )
+        plt.legend()
+
+        plt.savefig("msft.png")
+        # for out, sdv, target in zip(output, sdvs, target_seq):
+        #     log_data = {}
+        #     for i in range(len(target)):
+        #         log_data[f"out/{i}"] = out[i]
+        #         log_data[f"sdv/{i}"] = sdv[i]
+        #         log_data[f"target/{i}"] = target[i]
 
     def _report(
         self,
@@ -115,16 +148,18 @@ class SequencePredictionModel(pl.LightningModule):
                     prog_bar=True,
                 )
 
-    def predict_step(self, x, length: int):
+    def _predict_step(self, x, length: int):
         x = x.unsqueeze(0).to(self.device)
         x, hx, _ = self(x)
         x = x[:, -1, :]
         outs = []
+        sdvs = []
         for _ in range(length):
             x, hx = self._forward_flow(x, hx)
+            outs.append(x.mean[0].cpu().detach().numpy())
+            sdvs.append(x.stddev[0].cpu().detach().numpy())
             x = x.mean
-            outs.append(x[0].cpu().numpy())
-        return np.stack(outs, 0)
+        return np.stack(outs, 0), np.stack(sdvs, 0)
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=0.001)
