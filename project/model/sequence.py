@@ -89,33 +89,30 @@ class SequencePredictionModel(pl.LightningModule):
             )
 
     def backtest(self, sample):
-        sample = sample[:1000]
+        sample_len = 500
+        offset = sample[:-sample_len][:, 0].sum().item()
+        sample = sample[-sample_len:]
         length = int(len(sample) // 2)
         input_seq, target_seq = sample[:length], sample[length:]
         output, sdvs = self._predict_step(input_seq, len(target_seq))
-
+        sdvs = sdvs[:, 0]
+        input_seq = input_seq[:, 0].numpy().cumsum() + offset
+        target_seq = target_seq[:, 0].numpy().cumsum()
+        output = output[:, 0].cumsum()
+        output += input_seq[-1]
+        target_seq += input_seq[-1]
         plt.xlabel("Time")
         plt.ylabel("Value")
         print(plt.rcParamsDefault["figure.figsize"])
-        plt.plot(input_seq[:, 0], label=f"input")
+        plt.plot(input_seq, label=f"input")
         pred_ids = np.arange(len(input_seq), len(input_seq) + len(target_seq))
-        plt.plot(pred_ids, target_seq[:, 0], label=f"target", linewidth=2)
-        plt.plot(pred_ids, output[:, 0], label=f"output", linewidth=2.0)
-        plt.plot(
-            pred_ids, output[:, 0] + sdvs[:, 0], label=f"output + sdvs", linewidth=1
-        )
-        plt.plot(
-            pred_ids, output[:, 0] - sdvs[:, 0], label=f"output - sdvs", linewidth=1
-        )
+        plt.plot(pred_ids, target_seq, label=f"target", linewidth=2)
+        plt.plot(pred_ids, output, label=f"output", linewidth=2.0)
+        plt.plot(pred_ids, output + sdvs, label=f"output + sdvs", linewidth=1)
+        plt.plot(pred_ids, output - sdvs, label=f"output - sdvs", linewidth=1)
         plt.legend()
 
         plt.savefig("msft.png")
-        # for out, sdv, target in zip(output, sdvs, target_seq):
-        #     log_data = {}
-        #     for i in range(len(target)):
-        #         log_data[f"out/{i}"] = out[i]
-        #         log_data[f"sdv/{i}"] = sdv[i]
-        #         log_data[f"target/{i}"] = target[i]
 
     def _report(
         self,
@@ -162,4 +159,4 @@ class SequencePredictionModel(pl.LightningModule):
         return np.stack(outs, 0), np.stack(sdvs, 0)
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=0.001)
+        return optim.Adam(self.parameters(), lr=0.0001)

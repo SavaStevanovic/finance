@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import loggers as pl_loggers
 
-db = Sqlite("example.db")
+db = Sqlite("example2.db")
 provider = Yahoo()
 
 seq_length = 100
@@ -35,10 +35,6 @@ features = ["Open", "Close"]
 train_dataset = TimeSeriesDataset(training_data, seq_length, features)
 val_dataset = TimeSeriesDataset(val_data, seq_length, features)
 test_dataset = TimeSeriesDataset(test_data, 100, features)
-backtest_dataset = TimeSeriesDataset(
-    {"MSFT": test_data["MSFT"]}, len(test_data["MSFT"]) - 1, features
-)
-
 train_dataloader = DataLoader(
     train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
 )
@@ -56,12 +52,12 @@ test_dataloader = DataLoader(
     shuffle=False,
     num_workers=23,
 )
-
+num_layers = 1
 model = SequencePredictionModel(
     train_dataset[0][0].shape[1],
     1024,
     train_dataset[0][1].shape[1],
-    1,
+    num_layers,
     seq_length,
 )
 checkpoint_callback = ModelCheckpoint(
@@ -71,20 +67,10 @@ checkpoint_callback = ModelCheckpoint(
     auto_insert_metric_name=False,
 )
 trainer = pl.Trainer(
-    max_epochs=20,
+    max_epochs=10,
     gradient_clip_val=1,
     gradient_clip_algorithm="value",
     callbacks=[checkpoint_callback],
 )
-# trainer.fit(model, train_dataloader, val_dataloader)
-
-model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/02-val_loss1.78.ckpt",
-    input_size=train_dataset[0][0].shape[1],
-    hidden_size=1024,
-    output_size=train_dataset[0][1].shape[1],
-    num_layers=1,
-    seq_length=seq_length,
-)
-# trainer.test(model, test_dataloader)
-model.backtest(backtest_dataset[0][0])
+trainer.fit(model, train_dataloader, val_dataloader)
+trainer.test(model, test_dataloader)

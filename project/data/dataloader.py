@@ -10,7 +10,7 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         sequence_length: int,
         features: list,
     ):
-        self._sequence_length = sequence_length
+        self._sequence_length = sequence_length + 1
         self._features = features
         self._groups = groups
         self._ids = [
@@ -26,6 +26,7 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = self.preprocess(sequence, self._features)
+        sequence = sequence[1:] - sequence[:-1]
         return (
             sequence[:-1],
             sequence[1:],
