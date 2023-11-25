@@ -90,15 +90,15 @@ class SequencePredictionModel(pl.LightningModule):
 
     def backtest(self, sample):
         sample_len = 500
-        offset = sample[:-sample_len][:, 0].sum().item()
+        offset = sample[:-sample_len][:, -1].sum().item()
         sample = sample[-sample_len:]
         length = int(len(sample) // 2)
         input_seq, target_seq = sample[:length], sample[length:]
         output, sdvs = self._predict_step(input_seq, len(target_seq))
         sdvs = sdvs[:, 0]
-        input_seq = input_seq[:, 0].numpy().cumsum() + offset
-        target_seq = target_seq[:, 0].numpy().cumsum()
-        output = output[:, 0].cumsum()
+        input_seq = input_seq[:, -1].numpy().cumsum() + offset
+        target_seq = target_seq[:, -1].numpy().cumsum()
+        output = output[:, -1].cumsum()
         output += input_seq[-1]
         target_seq += input_seq[-1]
         plt.xlabel("Time")
@@ -121,8 +121,6 @@ class SequencePredictionModel(pl.LightningModule):
         target: torch.Tensor,
         metrics: typing.List[Metric],
     ):
-        if not target.all():
-            return
         for metric in metrics:
             metric_val = metric(output, target)
             if metric_val.shape:

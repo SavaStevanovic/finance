@@ -1,4 +1,5 @@
 import typing
+import numpy as np
 import pandas as pd
 import torch
 
@@ -26,6 +27,27 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = self.preprocess(sequence, self._features)
+        channels = [sequence[:, i].numpy() for i in range(0, sequence.shape[1])]
+        seq_len = 13
+        seq = (
+            np.concatenate((np.ones(seq_len), np.zeros(seq_len - 1)), axis=0) / seq_len
+        )
+
+        mean_stack = [
+            np.convolve(
+                np.pad(c, (len(seq) // 2, len(seq) // 2), mode="edge"),
+                seq,
+                mode="valid",
+            )
+            for c in channels
+        ]
+        sequence_mean = np.stack(
+            mean_stack,
+            axis=1,
+        ).astype("float32")
+        sequence = torch.tensor(
+            np.concatenate((sequence_mean, sequence.numpy()), axis=1)
+        )
         sequence = sequence[1:] - sequence[:-1]
         return (
             sequence[:-1],

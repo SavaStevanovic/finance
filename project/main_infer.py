@@ -22,10 +22,10 @@ backtest_dataset = TimeSeriesDataset(
 )
 num_layers = 1
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/00-val_loss3.24.ckpt",
-    input_size=len(features),
+    "checkpoints/08-val_loss0.10.ckpt",
+    input_size=backtest_dataset[0][0].shape[1],
     hidden_size=1024,
-    output_size=len(features),
+    output_size=backtest_dataset[0][0].shape[1],
     num_layers=num_layers,
     seq_length=seq_length,
 )
