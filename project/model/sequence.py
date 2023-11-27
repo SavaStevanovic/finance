@@ -10,7 +10,7 @@ from model.metrics import Metric, Seqence, WholeSeqence, Loss
 import matplotlib.pyplot as plt
 import matplotlib
 
-matplotlib.rc("figure", figsize=(50, 25))
+matplotlib.rc("figure", figsize=(200, 50))
 
 
 class SequencePredictionModel(pl.LightningModule):
@@ -113,6 +113,39 @@ class SequencePredictionModel(pl.LightningModule):
         plt.legend()
 
         plt.savefig("msft.png")
+
+    def backtest_next_step(self, sample):
+        sample = sample[-1000:]
+        input_seq, target_seq = sample[:-1], sample[1:]
+        output, _, whole_out = self.forward(input_seq.unsqueeze(0).cuda())
+        output = output.detach().cpu().squeeze(0).numpy()
+        sdvs = (
+            torch.concatenate([x.stddev for x in whole_out], axis=0)
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        sdvs = sdvs[:, -1]
+        target_seq = target_seq[:, -1].numpy().cumsum()
+        input_seq = input_seq[:, -1].numpy().cumsum()
+        output = output[:, -1] + target_seq
+        plt.xlabel("Time")
+        plt.ylabel("Value")
+        print(plt.rcParamsDefault["figure.figsize"])
+        # plt.plot(input_seq, label=f"input")
+        plt.plot(target_seq, label=f"target", linewidth=4)
+        plt.plot(output, label=f"output", linewidth=3.0)
+        plt.plot(output + sdvs, label=f"output + sdvs", linewidth=1)
+        plt.plot(output - sdvs, label=f"output - sdvs", linewidth=1)
+        target_pred = np.absolute(target_seq - output)
+        plt.plot(target_pred, label=f"target_seq - output", linewidth=1)
+        same_seq = np.absolute(target_seq - input_seq)
+        plt.plot(same_seq, label=f"target_seq - input_seq", linewidth=1)
+        plt.legend()
+
+        plt.savefig("msft_single.png")
+        print(f"pred_value {target_pred.sum()}")
+        print(f"input_value {same_seq.sum()}")
 
     def _report(
         self,
