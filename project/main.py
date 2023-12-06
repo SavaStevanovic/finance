@@ -21,16 +21,15 @@ data = data.dropna(axis=0)
 print(data.shape)
 cols = list(data.columns)
 cols.remove("Symbol")
-groups = {key: subdata for key, subdata in data.groupby("Symbol")[cols]}
-s = pd.Series(groups)
-training_data, data = [
-    i.to_dict() for i in train_test_split(s, train_size=0.7, random_state=1)
+train_split = data[(data["Date"] < "2021-11-17 00:00:00-05:00")]
+validation_split = data[
+    (data["Date"] < "2022-11-17 00:00:00-05:00")
+    & (data["Date"] >= "2021-11-17 00:00:00-05:00")
 ]
-s = pd.Series(data)
-
-val_data, test_data = [
-    i.to_dict() for i in train_test_split(s, train_size=0.5, random_state=1)
-]
+test_split = data[(data["Date"] >= "2022-11-17 00:00:00-05:00")]
+training_data = {key: subdata for key, subdata in train_split.groupby("Symbol")[cols]}
+val_data = {key: subdata for key, subdata in validation_split.groupby("Symbol")[cols]}
+test_data = {key: subdata for key, subdata in test_split.groupby("Symbol")[cols]}
 features = ["Open", "Close"]
 train_dataset = TimeSeriesDataset(training_data, seq_length, features)
 val_dataset = TimeSeriesDataset(val_data, seq_length, features)
