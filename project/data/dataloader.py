@@ -10,14 +10,18 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         groups: typing.Dict[str, pd.DataFrame],
         sequence_length: int,
         features: list,
+        single_sample: bool = False,
     ):
         self._sequence_length = sequence_length + 1
         self._features = features
         self._groups = groups
+        select = slice(0, -1)
+        if single_sample:
+            select = slice(-2, -1)
         self._ids = [
             (k, kid)
             for k, v in self._groups.items()
-            for kid in range(len(v) - self._sequence_length)
+            for kid in range(len(v) - self._sequence_length)[select]
         ]
 
     def __len__(self):
