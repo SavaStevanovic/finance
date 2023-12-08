@@ -10,18 +10,14 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         groups: typing.Dict[str, pd.DataFrame],
         sequence_length: int,
         features: list,
-        single_sample: bool = False,
     ):
         self._sequence_length = sequence_length + 1
         self._features = features
         self._groups = groups
-        select = slice(0, -1)
-        if single_sample:
-            select = slice(-2, -1)
         self._ids = [
             (k, kid)
             for k, v in self._groups.items()
-            for kid in range(len(v) - self._sequence_length)[select]
+            for kid in range(len(v) - self._sequence_length)
         ]
 
     def __len__(self):
@@ -63,3 +59,24 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         sequence = sequence.drop(columns=["Date"]).astype("float32")
         # sequence = sequence.subtract(sequence.mean()).divide(sequence.std() + 1e-7)
         return torch.tensor(sequence[features].values)
+
+
+class TimeSeriesDatasetInference(torch.utils.data.Dataset):
+    def __init__(
+        self,
+        groups: typing.Dict[str, pd.DataFrame],
+        sequence_length: int,
+        features: list,
+    ):
+        self._dataset = TimeSeriesDataset(
+            {k: v.iloc[-sequence_length - 2 :] for k, v in groups.items()},
+            sequence_length,
+            features,
+        )
+
+    def __len__(self):
+        return len(self._dataset)
+
+    def __getitem__(self, idx):
+        ticker, _ = self._dataset._ids[idx]
+        return ticker, self._dataset[idx][1]
