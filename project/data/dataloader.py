@@ -27,10 +27,26 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = self.preprocess(sequence, self._features)
+        sequence_mean = self.get_running_mean(sequence)
+        # inp = torch.tensor(list(range(50)) + list(range(50, 0, -1))).unsqueeze(1)
+        # print([round(x, 2) for x in self.get_running_mean(inp).squeeze().tolist()])
+        # print([round(x, 2) for x in self.get_rsi(inp).squeeze().tolist()])
+        sequence_rsi = self.get_rsi(sequence)
+        orig_sequence = torch.tensor(
+            np.concatenate((sequence_rsi, sequence_mean, sequence.numpy()), axis=1)
+        )
+        sequence = orig_sequence
+        sequence = (sequence[1:] - sequence[:-1]) / (
+            sequence[1:] + sequence[:-1] + 1e-7
+        )
+        # sequence = sequence.nan_to_num(0)
+        return (sequence[:-1], sequence[1:], orig_sequence[1:-1])
+
+    def get_running_mean(self, sequence):
         channels = [sequence[:, i].numpy() for i in range(0, sequence.shape[1])]
-        seq_len = 13
+        seq_len = 14
         seq = (
-            np.concatenate((np.ones(seq_len), np.zeros(seq_len - 1)), axis=0) / seq_len
+            np.concatenate((np.zeros(seq_len - 1), np.ones(seq_len)), axis=0) / seq_len
         )
 
         mean_stack = [
@@ -45,14 +61,47 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
             mean_stack,
             axis=1,
         ).astype("float32")
-        sequence = torch.tensor(
-            np.concatenate((sequence_mean, sequence.numpy()), axis=1)
+
+        return sequence_mean
+
+    def get_rsi(self, sequence):
+        channels = [
+            sequence[1:, i].numpy() - sequence[:-1, i].numpy()
+            for i in range(0, sequence.shape[1])
+        ]
+        seq_len = 14
+        seq = (
+            np.concatenate((np.zeros(seq_len - 1), np.ones(seq_len)), axis=0) / seq_len
         )
-        sequence = sequence[1:] - sequence[:-1]
-        return (
-            sequence[:-1],
-            sequence[1:],
-        )
+
+        channels = [np.stack([c * (c > 0), -c * (c < 0)]) for c in channels]
+        channels = [
+            np.stack(
+                [
+                    np.convolve(
+                        np.pad(
+                            c,
+                            (len(seq) // 2, len(seq) // 2),
+                            mode="edge",
+                        ),
+                        seq,
+                        mode="valid",
+                    )
+                    for c in subc
+                ]
+            )
+            for subc in channels
+        ]
+        channels = [c[0] / (c[1] + 1e-7) for c in channels]
+        channels = [100 - (100 / (1 + c)) for c in channels]
+
+        channels = np.stack(
+            channels,
+            axis=1,
+        ).astype("float32")
+        channels = np.pad(channels, [(0, 1), (0, 0)], mode="edge")
+
+        return channels
 
     @staticmethod
     def preprocess(sequence, features):
@@ -79,4 +128,4 @@ class TimeSeriesDatasetInference(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         ticker, _ = self._dataset._ids[idx]
-        return ticker, self._dataset[idx][1]
+        return ticker, self._dataset[idx][1], self._dataset[idx][2]

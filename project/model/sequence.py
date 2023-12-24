@@ -52,7 +52,7 @@ class SequencePredictionModel(pl.LightningModule):
         return pred, new_states
 
     def training_step(self, batch):
-        x, y = batch
+        x, y, _ = batch
         y_pred, _, dist = self(x)
         loss = torch.stack(
             [-dist[i].log_prob(y[:, i, :]) for i in range(len(dist))]
@@ -67,7 +67,7 @@ class SequencePredictionModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch):
-        x, y = batch
+        x, y, _ = batch
         y_pred, _, _ = self(x)
         self._report(
             "validation",
@@ -77,7 +77,7 @@ class SequencePredictionModel(pl.LightningModule):
         )
 
     def test_step(self, batch):
-        x, _ = batch
+        x, _, _ = batch
         for sample in x:
             input_seq, target_seq = sample[:50], sample[50:]
             output, _ = self._predict_step(input_seq, len(target_seq))
@@ -114,15 +114,17 @@ class SequencePredictionModel(pl.LightningModule):
 
         plt.savefig("msft.png")
 
-    def backtest_next_step(self, sample):
+    def backtest_next_step(self, sample, sample_orig):
         sample = sample[-1000:]
-        input_seq, target_seq = sample[:-1], sample[1:]
+        input_seq, target_seq = sample[:-1], sample_orig[:-1]
         output, _, _ = self.forward(input_seq.unsqueeze(0).cuda())
         output = output.detach().cpu().squeeze(0).numpy()
-        target_seq = target_seq[:, -1].numpy().cumsum()
-        input_seq = input_seq[:, -1].numpy().cumsum()
-        output = output[:, -1] + target_seq
-        return target_seq, output, input_seq
+        output = self.revert_output(target_seq, output)
+        input_seq = self.revert_output(target_seq, np.zeros_like(output))
+        return sample_orig[1:, -1], output[:, -1], sample_orig[:-1, -1]
+
+    def revert_output(self, input_seq, output):
+        return (input_seq * output + output * 1e-7 + input_seq) / (1 - output)
 
     def _report(
         self,

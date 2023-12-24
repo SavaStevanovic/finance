@@ -66,7 +66,7 @@ checkpoint_callback = ModelCheckpoint(
     auto_insert_metric_name=False,
 )
 trainer = pl.Trainer(
-    max_epochs=10,
+    max_epochs=30,
     gradient_clip_val=1,
     gradient_clip_algorithm="value",
     callbacks=[checkpoint_callback],
