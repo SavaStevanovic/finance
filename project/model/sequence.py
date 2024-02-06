@@ -23,9 +23,9 @@ class SequencePredictionModel(pl.LightningModule):
             [nn.LSTMCell(input_size, hidden_size)]
             + [nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers - 1)]
         ).to(self.device)
-        self._mean_layer = nn.Sequential(
-            nn.Linear(hidden_size, output_size), nn.Softplus()
-        ).to(self.device)
+        self._mean_layer = nn.Sequential(nn.Linear(hidden_size, output_size)).to(
+            self.device
+        )
         self._std_layer = nn.Sequential(
             nn.Linear(hidden_size, output_size), nn.Softplus()
         ).to(self.device)
@@ -55,8 +55,8 @@ class SequencePredictionModel(pl.LightningModule):
         x, y, _ = batch
         y_pred, _, dist = self(x)
         loss = torch.stack(
-            [-dist[i].log_prob(y[:, i, :]) for i in range(len(dist))]
-        ).mean()
+            [(-dist[i].mean - y[:, i, :]).abs() for i in range(len(dist))]
+        )[..., -1].mean()
 
         self._report(
             "training",
@@ -115,16 +115,16 @@ class SequencePredictionModel(pl.LightningModule):
         plt.savefig("msft.png")
 
     def backtest_next_step(self, sample, sample_orig):
-        sample = sample[-1000:]
+        sample = sample[-1100:]
         input_seq, target_seq = sample[:-1], sample_orig[:-1]
         output, _, _ = self.forward(input_seq.unsqueeze(0).cuda())
         output = output.detach().cpu().squeeze(0).numpy()
         output = self.revert_output(target_seq, output)
         input_seq = self.revert_output(target_seq, np.zeros_like(output))
-        return sample_orig[1:, -1], output[:, -1], sample_orig[:-1, -1]
+        return sample_orig[101:, -1], output[100:, -1], sample_orig[100:-1, -1]
 
     def revert_output(self, input_seq, output):
-        return (input_seq * output + output * 1e-7 + input_seq) / (1 - output)
+        return (input_seq + output * 1e-7) / (1 - output)
 
     def _report(
         self,
@@ -133,6 +133,8 @@ class SequencePredictionModel(pl.LightningModule):
         target: torch.Tensor,
         metrics: typing.List[Metric],
     ):
+        output = output[..., -1]
+        target = target[..., -1]
         for metric in metrics:
             metric_val = metric(output, target)
             if metric_val.shape:
@@ -169,4 +171,4 @@ class SequencePredictionModel(pl.LightningModule):
         return np.stack(outs, 0), np.stack(sdvs, 0)
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=0.0001)
+        return optim.Adam(self.parameters(), lr=0.00001)

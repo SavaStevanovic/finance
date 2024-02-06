@@ -35,7 +35,7 @@ train_dataset = TimeSeriesDataset(training_data, seq_length, features)
 val_dataset = TimeSeriesDataset(val_data, seq_length, features)
 test_dataset = TimeSeriesDataset(test_data, 100, features)
 train_dataloader = DataLoader(
-    train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
+    train_dataset, batch_size=512, shuffle=True, num_workers=23, pin_memory=True
 )
 
 val_dataloader = DataLoader(
@@ -66,7 +66,7 @@ checkpoint_callback = ModelCheckpoint(
     auto_insert_metric_name=False,
 )
 trainer = pl.Trainer(
-    max_epochs=30,
+    max_epochs=50,
     gradient_clip_val=1,
     gradient_clip_algorithm="value",
     callbacks=[checkpoint_callback],

@@ -27,18 +27,14 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = self.preprocess(sequence, self._features)
-        sequence_mean = self.get_running_mean(sequence)
+        # sequence_mean = self.get_running_mean(sequence)
         # inp = torch.tensor(list(range(50)) + list(range(50, 0, -1))).unsqueeze(1)
         # print([round(x, 2) for x in self.get_running_mean(inp).squeeze().tolist()])
         # print([round(x, 2) for x in self.get_rsi(inp).squeeze().tolist()])
-        sequence_rsi = self.get_rsi(sequence)
-        orig_sequence = torch.tensor(
-            np.concatenate((sequence_rsi, sequence_mean, sequence.numpy()), axis=1)
-        )
+        # sequence_rsi = self.get_rsi(sequence)
+        orig_sequence = torch.tensor(sequence.numpy())
         sequence = orig_sequence
-        sequence = (sequence[1:] - sequence[:-1]) / (
-            sequence[1:] + sequence[:-1] + 1e-7
-        )
+        sequence = (sequence[1:] - sequence[:-1]) / (sequence[1:] + 1e-7)
         # sequence = sequence.nan_to_num(0)
         return (sequence[:-1], sequence[1:], orig_sequence[1:-1])
 
