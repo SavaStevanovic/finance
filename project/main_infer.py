@@ -13,16 +13,15 @@ print(data.shape)
 
 data = data.dropna(axis=1, thresh=len(data) - 5000)
 data = data.dropna(axis=0)
-test_split = data[(data["Date"] >= "2022-11-17 00:00:00-05:00")]
 print(data.shape)
 cols = list(data.columns)
 cols.remove("Symbol")
 data = {key: subdata for key, subdata in data.groupby("Symbol")[cols]}
-features = ["Open", "Close"]
+features = ["Close"]
 backtest_dataset = TimeSeriesDatasetInference(data, 1000, features)
 num_layers = 1
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/00-val_loss0.81.ckpt",
+    "checkpoints/00-val_loss0.74.ckpt",
     input_size=backtest_dataset[0][1].shape[1],
     hidden_size=1024,
     output_size=backtest_dataset[0][1].shape[1],

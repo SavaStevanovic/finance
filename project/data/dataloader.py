@@ -35,20 +35,18 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         # sequence_rsi = self.get_rsi(sequence)
         seq = torch.stack(
             [
-                sequence[1:, 1] / (sequence[1:, 0] + 1e-7) - 1,
-                sequence[1:, 1] / (sequence[:-1, 1] + 1e-7) - 1,
-                sequence[1:, 0] / (sequence[1:, 1] + 1e-7) - 1,
+                sequence[1:, 0] / (sequence[:-1, 0] + 1e-7) - 1,
             ],
             dim=1,
         )
         transform = RobustScaler().fit(seq.numpy())
         seq_processed = torch.tensor(transform.transform(seq)).to(torch.float32)
         orig_sequence = torch.tensor(sequence.numpy())
-        return (seq_processed[:-1], seq_processed[1:], seq, orig_sequence[1:])
+        return (seq_processed, seq, orig_sequence[1:])
 
     def __getitem__(self, idx):
-        train, test, seq, _ = self.getitem(idx)
-        return train, test, seq
+        data, seq, _ = self.getitem(idx)
+        return data, seq
 
     def get_running_mean(self, sequence):
         channels = [sequence[:, i].numpy() for i in range(0, sequence.shape[1])]
@@ -137,4 +135,4 @@ class TimeSeriesDatasetInference(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         ticker, _ = self._dataset._ids[idx]
         data = self._dataset.getitem(idx)
-        return ticker, data[0], data[2], data[3]
+        return ticker, data[0], data[1], data[2]

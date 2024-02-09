@@ -48,7 +48,8 @@ class SequencePredictionModel(pl.LightningModule):
         return mean, new_states
 
     def training_step(self, batch):
-        x, y, _ = batch
+        data, _= batch
+        x, y = data[:, :-1], data[:, 1:]
         y_pred, _, dist = self(x)
         loss = WholeSeqence()(y_pred, y)
         self._report(
@@ -60,7 +61,8 @@ class SequencePredictionModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch):
-        x, y, _ = batch
+        data, _ = batch
+        x, y = data[:, :-1], data[:, 1:]
         y_pred, _, _ = self(x)
         self._report(
             "validation",
@@ -70,7 +72,8 @@ class SequencePredictionModel(pl.LightningModule):
         )
 
     def test_step(self, batch):
-        x, _, _ = batch
+        data, _ = batch
+        x = data[:-1]
         for sample in x:
             input_seq, target_seq = sample[:50], sample[50:]
             output, _ = self._predict_step(input_seq, len(target_seq))
@@ -109,15 +112,15 @@ class SequencePredictionModel(pl.LightningModule):
 
     def backtest_next_step(self, sample, seq, sample_orig):
         sample = sample[-1100:]
-        input_seq, target_seq = sample, sample_orig[1:]
+        input_seq, target_seq = sample[:-1], sample_orig[1:]
         output, _, _ = self.forward(input_seq.unsqueeze(0).cuda())
         output = output.detach().cpu().squeeze(0).numpy()
         transform = RobustScaler().fit(seq.numpy())
         output = transform.inverse_transform(output)
-        output = sample_orig[:-1, 1]*(output[:, 1]+1)
-        true_out = sample_orig[:-1, 1]*(seq[1:, 1]+1)
+        output = sample_orig[:-1, 0]*(output[:, 0]+1)
+        true_out = sample_orig[:-1, 0]*(seq[1:, 0]+1)
         # input_seq = self.revert_output(target_seq, np.zeros_like(output))
-        return sample_orig[101:, 1], output[100:], sample_orig[100:-1, 1]
+        return sample_orig[101:, 0], output[100:], sample_orig[100:-1, 0]
 
     def revert_output(self, input_seq, output):
         return (input_seq + output * 1e-7) / (1 - output)
@@ -129,8 +132,6 @@ class SequencePredictionModel(pl.LightningModule):
         target: torch.Tensor,
         metrics: typing.List[Metric],
     ):
-        output = output[..., -1, 1]
-        target = target[..., -1, 1]
         for metric in metrics:
             metric_val = metric(output, target)
             if metric_val.shape:
