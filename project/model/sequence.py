@@ -51,7 +51,7 @@ class SequencePredictionModel(pl.LightningModule):
         data, _= batch
         x, y = data[:, :-1], data[:, 1:]
         y_pred, _, dist = self(x)
-        loss = WholeSeqence()(y_pred, y)
+        loss = torch.clamp(WholeSeqence()(y_pred, y), max=1)
         self._report(
             "training",
             y_pred.detach().cpu().squeeze(-1).numpy(),
