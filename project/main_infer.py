@@ -21,7 +21,7 @@ features = ["Close"]
 backtest_dataset = TimeSeriesDatasetInference(data, 1000, features)
 num_layers = 1
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/00-val_loss0.74-v1.ckpt",
+    "checkpoints/01-val_loss0.75.ckpt",
     input_size=backtest_dataset[0][1].shape[1],
     hidden_size=1024,
     output_size=backtest_dataset[0][1].shape[1],
