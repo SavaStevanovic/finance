@@ -22,7 +22,7 @@ features = ["Open", "Close"]
 backtest_dataset = TimeSeriesDatasetInference(data, 1000, features)
 num_layers = 1
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/39-val_loss0.00.ckpt",
+    "checkpoints/00-val_loss0.81.ckpt",
     input_size=backtest_dataset[0][1].shape[1],
     hidden_size=1024,
     output_size=backtest_dataset[0][1].shape[1],
@@ -66,8 +66,8 @@ symbol_weights = {k: v / symbol_weights_total for k, v in symbol_weights.items()
 
 # model.backtest(backtest_dataset[0][0])
 market_data = {}
-for market, data, data_orig in backtest_dataset:
-    market_data[market] = model.backtest_next_step(data, data_orig)
+for market, data, seq, data_orig in backtest_dataset:
+    market_data[market] = model.backtest_next_step(data, seq, data_orig)
 
 
 def sum_symbol_data(symbol_weights, market_data, id):
@@ -98,8 +98,9 @@ print(f"input_value {same_seq.sum()}")
 
 
 target_seq, output, input_seq = model.backtest_next_step(
-    sum(symbol_weights[market] * data for market, data, _ in backtest_dataset),
-    sum(symbol_weights[market] * data for market, _, data in backtest_dataset),
+    sum(symbol_weights[market] * data for market, data, _, _ in backtest_dataset),
+    sum(symbol_weights[market] * data for market, _, data, _ in backtest_dataset),
+    sum(symbol_weights[market] * data for market, _, _, data in backtest_dataset),
 )
 plt.clf()
 plt.xlabel("Time")

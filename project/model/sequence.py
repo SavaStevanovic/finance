@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 matplotlib.rc("figure", figsize=(200, 50))
+from sklearn.preprocessing import RobustScaler
 
 
 class SequencePredictionModel(pl.LightningModule):
@@ -26,11 +27,8 @@ class SequencePredictionModel(pl.LightningModule):
         self._mean_layer = nn.Sequential(nn.Linear(hidden_size, output_size)).to(
             self.device
         )
-        self._std_layer = nn.Sequential(
-            nn.Linear(hidden_size, output_size), nn.Softplus()
-        ).to(self.device)
         self._metrics = [Seqence(-1), Seqence(0)]
-        self._iteration_metrics = [Loss(nn.MSELoss()), WholeSeqence()]
+        self._iteration_metrics = [Loss(nn.L1Loss()), WholeSeqence()]
 
     def forward(self, x):
         output = []
@@ -38,7 +36,7 @@ class SequencePredictionModel(pl.LightningModule):
         for i in range(x.shape[1]):
             out, state = self._forward_flow(x[:, i], state)
             output.append(out)
-        return torch.stack([x.mean for x in output], 1), state, output
+        return torch.stack([x for x in output], 1), state, output
 
     def _forward_flow(self, x, states):
         new_states = []
@@ -47,17 +45,12 @@ class SequencePredictionModel(pl.LightningModule):
             x = state[0] if not i else x + state[0]
             new_states.append(state)
         mean = self._mean_layer(x)
-        std = self._std_layer(x)
-        pred = torch.distributions.Normal(mean, std)
-        return pred, new_states
+        return mean, new_states
 
     def training_step(self, batch):
         x, y, _ = batch
         y_pred, _, dist = self(x)
-        loss = torch.stack(
-            [(-dist[i].mean - y[:, i, :]).abs() for i in range(len(dist))]
-        )[..., -1].mean()
-
+        loss = WholeSeqence()(y_pred, y)
         self._report(
             "training",
             y_pred.detach().cpu().squeeze(-1).numpy(),
@@ -114,14 +107,17 @@ class SequencePredictionModel(pl.LightningModule):
 
         plt.savefig("msft.png")
 
-    def backtest_next_step(self, sample, sample_orig):
+    def backtest_next_step(self, sample, seq, sample_orig):
         sample = sample[-1100:]
-        input_seq, target_seq = sample[:-1], sample_orig[:-1]
+        input_seq, target_seq = sample, sample_orig[1:]
         output, _, _ = self.forward(input_seq.unsqueeze(0).cuda())
         output = output.detach().cpu().squeeze(0).numpy()
-        output = self.revert_output(target_seq, output)
-        input_seq = self.revert_output(target_seq, np.zeros_like(output))
-        return sample_orig[101:, -1], output[100:, -1], sample_orig[100:-1, -1]
+        transform = RobustScaler().fit(seq.numpy())
+        output = transform.inverse_transform(output)
+        output = sample_orig[:-1, 1]*(output[:, 1]+1)
+        true_out = sample_orig[:-1, 1]*(seq[1:, 1]+1)
+        # input_seq = self.revert_output(target_seq, np.zeros_like(output))
+        return sample_orig[101:, 1], output[100:], sample_orig[100:-1, 1]
 
     def revert_output(self, input_seq, output):
         return (input_seq + output * 1e-7) / (1 - output)
@@ -133,8 +129,8 @@ class SequencePredictionModel(pl.LightningModule):
         target: torch.Tensor,
         metrics: typing.List[Metric],
     ):
-        output = output[..., -1]
-        target = target[..., -1]
+        output = output[..., -1, 1]
+        target = target[..., -1, 1]
         for metric in metrics:
             metric_val = metric(output, target)
             if metric_val.shape:
@@ -171,4 +167,4 @@ class SequencePredictionModel(pl.LightningModule):
         return np.stack(outs, 0), np.stack(sdvs, 0)
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=0.00001)
+        return optim.Adam(self.parameters(), lr=0.001)

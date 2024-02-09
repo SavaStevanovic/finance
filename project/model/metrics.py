@@ -34,10 +34,11 @@ class WholeSeqence(Metric):
         return f"WholeSeqence"
 
     def __call__(self, output, sample):
+        if not isinstance(output, torch.Tensor):
+            output = torch.tensor(output)
         sample = torch.tensor(sample)
-        output = torch.tensor(output)
         return (
-            torch.abs(sample - output) / (torch.abs(sample) + torch.abs(output) + 1e-9)
+            torch.abs(sample - output)
         ).mean()
 
 

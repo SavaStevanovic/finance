@@ -2,6 +2,7 @@ import typing
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.preprocessing import RobustScaler
 
 
 class TimeSeriesDataset(torch.utils.data.Dataset):
@@ -23,7 +24,7 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._ids)
 
-    def __getitem__(self, idx):
+    def getitem(self, idx):
         k, idv = self._ids[idx]
         sequence = self._groups[k].iloc[idv : idv + self._sequence_length]
         sequence = self.preprocess(sequence, self._features)
@@ -32,11 +33,22 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
         # print([round(x, 2) for x in self.get_running_mean(inp).squeeze().tolist()])
         # print([round(x, 2) for x in self.get_rsi(inp).squeeze().tolist()])
         # sequence_rsi = self.get_rsi(sequence)
+        seq = torch.stack(
+            [
+                sequence[1:, 1] / (sequence[1:, 0] + 1e-7) - 1,
+                sequence[1:, 1] / (sequence[:-1, 1] + 1e-7) - 1,
+                sequence[1:, 0] / (sequence[1:, 1] + 1e-7) - 1,
+            ],
+            dim=1,
+        )
+        transform = RobustScaler().fit(seq.numpy())
+        seq_processed = torch.tensor(transform.transform(seq)).to(torch.float32)
         orig_sequence = torch.tensor(sequence.numpy())
-        sequence = orig_sequence
-        sequence = (sequence[1:] - sequence[:-1]) / (sequence[1:] + 1e-7)
-        # sequence = sequence.nan_to_num(0)
-        return (sequence[:-1], sequence[1:], orig_sequence[1:-1])
+        return (seq_processed[:-1], seq_processed[1:], seq, orig_sequence[1:])
+
+    def __getitem__(self, idx):
+        train, test, seq, _ = self.getitem(idx)
+        return train, test, seq
 
     def get_running_mean(self, sequence):
         channels = [sequence[:, i].numpy() for i in range(0, sequence.shape[1])]
@@ -124,4 +136,5 @@ class TimeSeriesDatasetInference(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         ticker, _ = self._dataset._ids[idx]
-        return ticker, self._dataset[idx][1], self._dataset[idx][2]
+        data = self._dataset.getitem(idx)
+        return ticker, data[0], data[2], data[3]

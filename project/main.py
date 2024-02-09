@@ -12,7 +12,7 @@ from pytorch_lightning import loggers as pl_loggers
 db = Sqlite("example2.db")
 provider = Yahoo()
 
-seq_length = 100
+seq_length = 240
 data = db.read({"Symbol": provider.tickers})
 print(data.shape)
 
@@ -35,7 +35,7 @@ train_dataset = TimeSeriesDataset(training_data, seq_length, features)
 val_dataset = TimeSeriesDataset(val_data, seq_length, features)
 test_dataset = TimeSeriesDataset(test_data, 100, features)
 train_dataloader = DataLoader(
-    train_dataset, batch_size=512, shuffle=True, num_workers=23, pin_memory=True
+    train_dataset, batch_size=32, shuffle=True, num_workers=23, pin_memory=True
 )
 
 val_dataloader = DataLoader(
