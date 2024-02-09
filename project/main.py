@@ -30,7 +30,7 @@ test_split = data[(data["Date"] >= "2022-11-17 00:00:00-05:00")]
 training_data = {key: subdata for key, subdata in train_split.groupby("Symbol")[cols]}
 val_data = {key: subdata for key, subdata in validation_split.groupby("Symbol")[cols]}
 test_data = {key: subdata for key, subdata in test_split.groupby("Symbol")[cols]}
-features = ["Open", "Close"]
+features = ["Close"]
 train_dataset = TimeSeriesDataset(training_data, seq_length, features)
 val_dataset = TimeSeriesDataset(val_data, seq_length, features)
 test_dataset = TimeSeriesDataset(test_data, 100, features)
