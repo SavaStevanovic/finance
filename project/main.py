@@ -12,16 +12,19 @@ from pytorch_lightning import loggers as pl_loggers
 db = Sqlite("example2.db")
 provider = Yahoo()
 
-seq_length = 240
-data = db.read({"Symbol": provider.tickers})
+seq_length = 64
+data = db.read({})
 print(data.shape)
 
 data = data.dropna(axis=1, thresh=len(data) - 5000)
 data = data.dropna(axis=0)
-print(data.shape)
 cols = list(data.columns)
 cols.remove("Symbol")
-train_split = data[(data["Date"] < "2021-11-17 00:00:00-05:00")]
+
+db3 = Sqlite("example2.db")
+train_data = db3.read({})
+train_split = train_data[(train_data["Date"] < "2021-11-17 00:00:00-05:00")]
+print(train_data.shape)
 validation_split = data[
     (data["Date"] < "2022-11-17 00:00:00-05:00")
     & (data["Date"] >= "2021-11-17 00:00:00-05:00")
@@ -53,16 +56,16 @@ test_dataloader = DataLoader(
 )
 num_layers = 1
 model = SequencePredictionModel(
-    train_dataset[0][0].shape[1],
+    train_dataset[0].shape[1],
     1024,
-    train_dataset[0][1].shape[1],
+    train_dataset[0].shape[1],
     num_layers,
     seq_length,
 )
 checkpoint_callback = ModelCheckpoint(
-    monitor="validation/LossSeqence",
+    monitor="training/WholeSeqence",
     dirpath="checkpoints/",
-    filename="{epoch:02d}-val_loss{validation/LossSeqence:.2f}",
+    filename="{epoch:02d}-val_loss{training/WholeSeqence:.2f}",
     auto_insert_metric_name=False,
 )
 trainer = pl.Trainer(

@@ -48,31 +48,31 @@ class SequencePredictionModel(pl.LightningModule):
         return mean, new_states
 
     def training_step(self, batch):
-        data, _= batch
+        data = batch
         x, y = data[:, :-1], data[:, 1:]
         y_pred, _, dist = self(x)
         loss = torch.clamp(WholeSeqence()(y_pred, y), max=1)
         self._report(
             "training",
-            y_pred.detach().cpu().squeeze(-1).numpy(),
-            y.cpu().squeeze(-1).numpy(),
+            y_pred.detach().cpu().numpy(),
+            y.cpu().numpy(),
             self._iteration_metrics,
         )
         return loss
 
     def validation_step(self, batch):
-        data, _ = batch
+        data = batch
         x, y = data[:, :-1], data[:, 1:]
         y_pred, _, _ = self(x)
         self._report(
             "validation",
-            y_pred.cpu().squeeze(-1).numpy(),
-            y.cpu().squeeze(-1).numpy(),
+            y_pred.cpu().numpy(),
+            y.cpu().numpy(),
             self._iteration_metrics,
         )
 
     def test_step(self, batch):
-        data, _ = batch
+        data = batch
         x = data[:-1]
         for sample in x:
             input_seq, target_seq = sample[:50], sample[50:]
@@ -80,7 +80,7 @@ class SequencePredictionModel(pl.LightningModule):
             self._report(
                 "test",
                 output,
-                target_seq.cpu().squeeze(-1).numpy(),
+                target_seq.cpu().numpy(),
                 self._metrics,
             )
 
@@ -111,16 +111,18 @@ class SequencePredictionModel(pl.LightningModule):
         plt.savefig("msft.png")
 
     def backtest_next_step(self, sample, seq, sample_orig):
-        sample = sample[-1100:]
+        sample_size = 1000
+        sample = sample[-sample_size:]
         input_seq, target_seq = sample[:-1], sample_orig[1:]
         output, _, _ = self.forward(input_seq.unsqueeze(0).cuda())
         output = output.detach().cpu().squeeze(0).numpy()
-        transform = RobustScaler().fit(seq.numpy())
-        output = transform.inverse_transform(output)
-        output = sample_orig[:-1, 0]*(output[:, 0]+1)
-        true_out = sample_orig[:-1, 0]*(seq[1:, 0]+1)
+        # transform = RobustScaler().fit(seq.numpy())
+        # output = transform.inverse_transform(output)
+        output = sample_orig[-sample_size:-1, 0]*(output[:, 0]+1)
+        # true_out = sample_orig[:-1, 0]*(seq[1:, 0]+1)
         # input_seq = self.revert_output(target_seq, np.zeros_like(output))
-        return sample_orig[101:, 0], output[100:], sample_orig[100:-1, 0]
+        offset = 100
+        return sample_orig[-sample_size + offset+ 1:, 0], output[offset:], sample_orig[-sample_size + offset:-1, 0]
 
     def revert_output(self, input_seq, output):
         return (input_seq + output * 1e-7) / (1 - output)

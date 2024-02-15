@@ -39,14 +39,13 @@ class TimeSeriesDataset(torch.utils.data.Dataset):
             ],
             dim=1,
         )
-        transform = RobustScaler().fit(seq.numpy())
-        seq_processed = torch.tensor(transform.transform(seq)).to(torch.float32)
+        seq_processed = seq.to(torch.float32)
         orig_sequence = torch.tensor(sequence.numpy())
-        return (seq_processed, seq, orig_sequence[1:])
+        return seq_processed, seq_processed, orig_sequence[1:]
 
     def __getitem__(self, idx):
-        data, seq, _ = self.getitem(idx)
-        return data, seq
+        data, _, _ = self.getitem(idx)
+        return data
 
     def get_running_mean(self, sequence):
         channels = [sequence[:, i].numpy() for i in range(0, sequence.shape[1])]

@@ -19,9 +19,9 @@ cols.remove("Symbol")
 data = {key: subdata for key, subdata in data.groupby("Symbol")[cols]}
 features = ["Close"]
 backtest_dataset = TimeSeriesDatasetInference(data, 1000, features)
-num_layers = 1
+num_layers = 2
 model = SequencePredictionModel.load_from_checkpoint(
-    "checkpoints/01-val_loss0.75.ckpt",
+    "checkpoints/22-val_loss0.00.ckpt",
     input_size=backtest_dataset[0][1].shape[1],
     hidden_size=1024,
     output_size=backtest_dataset[0][1].shape[1],
@@ -92,27 +92,5 @@ plt.plot(same_seq, label=f"target_seq - input_seq", linewidth=1)
 plt.legend()
 
 plt.savefig("msft_single.png")
-print(f"pred_value {target_pred.sum()}")
-print(f"input_value {same_seq.sum()}")
-
-
-target_seq, output, input_seq = model.backtest_next_step(
-    sum(symbol_weights[market] * data for market, data, _, _ in backtest_dataset),
-    sum(symbol_weights[market] * data for market, _, data, _ in backtest_dataset),
-    sum(symbol_weights[market] * data for market, _, _, data in backtest_dataset),
-)
-plt.clf()
-plt.xlabel("Time")
-plt.ylabel("Value")
-print(plt.rcParamsDefault["figure.figsize"])
-plt.plot(target_seq, label=f"target", linewidth=4)
-plt.plot(output, label=f"output", linewidth=3.0)
-target_pred = np.absolute(target_seq - output)
-plt.plot(target_pred, label=f"target_seq - output", linewidth=1)
-same_seq = np.absolute(target_seq - input_seq)
-plt.plot(same_seq, label=f"target_seq - input_seq", linewidth=1)
-plt.legend()
-
-plt.savefig("msft_single_total.png")
 print(f"pred_value {target_pred.sum()}")
 print(f"input_value {same_seq.sum()}")
