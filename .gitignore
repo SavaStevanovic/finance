@@ -3,3 +3,7 @@
 project/.vscode/launch.json
 */lightning_logs/*
 project/checkpoints/*
+project/test_data/*
+*.ckpt
+*_data.csv
+.vscode/launch.json
