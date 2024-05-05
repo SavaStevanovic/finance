@@ -76,7 +76,7 @@ def merge_dataframes(csv_paths, cols):
         df = pd.read_csv(path)
         suffix = "_" + path.split("/")[-1].rstrip(".csv") 
         df.columns = [c + suffix if c not in cols else c for c in df.columns]
-        df = df[~df[cols].isna().any(axis=1)]
+        # df = df[~df[cols].isna().any(axis=1)]
         print(df.shape, suffix)
         df.to_csv(f"{suffix}.csv")
         dfs.append(df)
@@ -93,7 +93,7 @@ def merge_dataframes(csv_paths, cols):
         print(merged_df.shape)
     
     return merged_df
-cols = ["PT_CODE"]
+cols = ["PT_CODE", "DONOR_ID"]
 df_paths = find_csv_with_columns("/mnt/FastData/Data/UNOS Data", cols)
 print(df_paths)
 # exit()

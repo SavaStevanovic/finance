@@ -1,4 +1,5 @@
 import copy
+import itertools
 import json
 import os
 import pandas as pd
@@ -14,6 +15,8 @@ def plot_category_distribution(df, target_column, category_column, path):
         plt.figure(figsize=(8, 6))
         df = copy.deepcopy(df[[target_column, category_column]])
         df = df.dropna()
+        if df.empty:
+            return
         plt.figure()  # No figsize specified here
         chategorical = (df[category_column].nunique() <= 10) or (df[category_column].dtype.name == "object")
         if chategorical:
@@ -33,20 +36,8 @@ def plot_category_distribution(df, target_column, category_column, path):
         
 # Assuming you have a DataFrame named df
 # Replace 'filename.csv' with your actual filename
-def extract_stats(filename):
-    common_cols = ["PT_CODE"]
-    columns = ["AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION"]
-    target_columns = ["TRR_ID_CODE", "WL_ID_CODE"]
-    columns_dataset = [c + filename.split(".")[0] for c in columns] 
-    target_columns = [c + filename.split(".")[0] for c in target_columns]
-    # Load the DataFrame from the CSV file
-    df = pd.read_csv(filename)
-    relevant_df = df[columns_dataset + common_cols + target_columns]
-    relevant_df[target_columns]= ~relevant_df[target_columns].isna()
-    relevant_df["BMI" + filename.split(".")[0]] = relevant_df["WGT_KG_CALC" + filename.split(".")[0]] / (relevant_df["HGT_CM_CALC" + filename.split(".")[0]]/100) ** 2 
-    columns_dataset += ["BMI" + filename.split(".")[0]]
-    
-    data_path = os.path.join("test_data", filename.split(".")[0])
+def extract_stats(target_columns, columns_dataset, relevant_df, filename):
+    data_path = os.path.join("test_data", filename)
     os.makedirs(data_path, exist_ok=True)
     metadata = {"data_size": len(relevant_df)}
     for target in target_columns:
@@ -59,7 +50,41 @@ def extract_stats(filename):
         trr_path = os.path.join("test_data", "transplantation")
         os.makedirs(trr_path, exist_ok=True)
         plot_category_distribution(relevant_df[relevant_df[target_columns[0]]], t_col, col, os.path.join(trr_path, filename.split(".")[0]))
-            
+
+def fetch_data(filename, common_cols):
+    columns = ["AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION"]
+    target_columns = ["TRR_ID_CODE", "WL_ID_CODE"]
+    columns_dataset = [c + filename.split(".")[0] for c in columns] 
+    target_columns = [c + filename.split(".")[0] for c in target_columns]
+    # Load the DataFrame from the CSV file
+    df = pd.read_csv(filename)
+    relevant_df = df[columns_dataset + common_cols + target_columns]
+    relevant_df[target_columns]= ~relevant_df[target_columns].isna()
+    relevant_df["BMI" + filename.split(".")[0]] = relevant_df["WGT_KG_CALC" + filename.split(".")[0]] / (relevant_df["HGT_CM_CALC" + filename.split(".")[0]]/100) ** 2 
+    columns_dataset += ["BMI" + filename.split(".")[0]]
+    return target_columns,columns_dataset,relevant_df
+
+def all_combinations(elements):
+    all_comb = []
+    for r in range(1, min(len(elements), 4)):
+        all_comb.extend(list(itertools.combinations(elements, r)))
+    return all_comb
+
 filenames = ["_intestine_data.csv", "_kidpan_data.csv", "_liver_data.csv", "_thoracic_data.csv"]
-for filename in filenames:
-    extract_stats(filename)
+file_interactions = all_combinations(filenames)
+common_cols = ["PT_CODE", "DONOR_ID"]
+for filenames in file_interactions:
+    target_columns = [] 
+    columns_dataset = []
+    datasets = []
+    for filename in filenames:
+        target_column, column_dataset, relevant_df = fetch_data(filename, common_cols)
+        target_columns.extend(target_column)
+        columns_dataset.extend(column_dataset)
+        datasets.append(relevant_df)
+        
+    merged_df = datasets[0]
+    for df in datasets[1:]:
+        merged_df = pd.merge(merged_df, df, on=common_cols, how='inner')
+    filename = "_".join(filename.split(".")[0] for filename in filenames)
+    extract_stats(target_columns, columns_dataset, merged_df, filename)
