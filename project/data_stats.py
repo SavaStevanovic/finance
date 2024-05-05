@@ -53,9 +53,12 @@ def extract_stats(filename):
         metadata[target] = int(relevant_df[target].sum())
     with open(os.path.join(data_path, "metadata.json"), "w") as file:
         json.dump(metadata, file, indent=4)
-    for t_col in target_columns:
-        for col in columns_dataset:
+    for col in columns_dataset:
+        for t_col in target_columns:
             plot_category_distribution(relevant_df, t_col, col, data_path)
+        trr_path = os.path.join("test_data", "transplantation")
+        os.makedirs(trr_path, exist_ok=True)
+        plot_category_distribution(relevant_df[relevant_df[target_columns[0]]], t_col, col, os.path.join(trr_path, filename.split(".")[0]))
             
 filenames = ["_intestine_data.csv", "_kidpan_data.csv", "_liver_data.csv", "_thoracic_data.csv"]
 for filename in filenames:
