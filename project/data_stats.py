@@ -42,14 +42,17 @@ def extract_stats(filename):
     # Load the DataFrame from the CSV file
     df = pd.read_csv(filename)
     relevant_df = df[columns_dataset + common_cols + target_columns]
-    relevant_df[target_columns]= relevant_df[target_columns].isna()
+    relevant_df[target_columns]= ~relevant_df[target_columns].isna()
     relevant_df["BMI" + filename.split(".")[0]] = relevant_df["WGT_KG_CALC" + filename.split(".")[0]] / (relevant_df["HGT_CM_CALC" + filename.split(".")[0]]/100) ** 2 
     columns_dataset += ["BMI" + filename.split(".")[0]]
     
     data_path = os.path.join("test_data", filename.split(".")[0])
     os.makedirs(data_path, exist_ok=True)
+    metadata = {"data_size": len(relevant_df)}
+    for target in target_columns:
+        metadata[target] = int(relevant_df[target].sum())
     with open(os.path.join(data_path, "metadata.json"), "w") as file:
-        json.dump({"data_size": len(df)}, file, indent=4)
+        json.dump(metadata, file, indent=4)
     for t_col in target_columns:
         for col in columns_dataset:
             plot_category_distribution(relevant_df, t_col, col, data_path)
