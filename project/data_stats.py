@@ -1,4 +1,5 @@
 import copy
+from functools import reduce
 import itertools
 import json
 import os
@@ -63,7 +64,12 @@ def fetch_data(filename, common_cols):
     relevant_df[target_columns]= ~relevant_df[target_columns].isna()
     relevant_df["BMI" + filename.split(".")[0]] = relevant_df["WGT_KG_CALC" + filename.split(".")[0]] / (relevant_df["HGT_CM_CALC" + filename.split(".")[0]]/100) ** 2 
     columns_dataset += ["BMI" + filename.split(".")[0]]
-    return target_columns,columns_dataset,relevant_df
+    unique_data = []
+    for t in target_columns:
+        s = relevant_df.groupby('PT_CODE')[target_columns[0]].nunique()
+        unique_data.append(list(s[s==1].index))
+    filtered_patients = list(reduce(set.intersection, map(set, unique_data)))  
+    return target_columns,columns_dataset,relevant_df[relevant_df["PT_CODE"].isin(filtered_patients)]
 
 def fetch_tx_data(filename, common_cols):
     columns = ["AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION", "TX_DATE", "INIT_DATE"]

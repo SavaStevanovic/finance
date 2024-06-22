@@ -1,9 +1,9 @@
 {
-    "data_size": 115,
-    "TRR_ID_CODE_kidpan_data": 48,
-    "WL_ID_CODE_kidpan_data": 115,
-    "TRR_ID_CODE_liver_data": 48,
-    "WL_ID_CODE_liver_data": 115,
-    "TRR_ID_CODE_thoracic_data": 48,
-    "WL_ID_CODE_thoracic_data": 115
+    "data_size": 86,
+    "TRR_ID_CODE_kidpan_data": 41,
+    "WL_ID_CODE_kidpan_data": 86,
+    "TRR_ID_CODE_liver_data": 41,
+    "WL_ID_CODE_liver_data": 86,
+    "TRR_ID_CODE_thoracic_data": 41,
+    "WL_ID_CODE_thoracic_data": 86
 }

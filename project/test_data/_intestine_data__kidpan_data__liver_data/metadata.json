@@ -1,9 +1,9 @@
 {
-    "data_size": 2663,
-    "TRR_ID_CODE_intestine_data": 1309,
-    "WL_ID_CODE_intestine_data": 2656,
-    "TRR_ID_CODE_kidpan_data": 1309,
-    "WL_ID_CODE_kidpan_data": 2649,
-    "TRR_ID_CODE_liver_data": 1309,
-    "WL_ID_CODE_liver_data": 2663
+    "data_size": 1856,
+    "TRR_ID_CODE_intestine_data": 992,
+    "WL_ID_CODE_intestine_data": 1851,
+    "TRR_ID_CODE_kidpan_data": 992,
+    "WL_ID_CODE_kidpan_data": 1844,
+    "TRR_ID_CODE_liver_data": 992,
+    "WL_ID_CODE_liver_data": 1856
 }
