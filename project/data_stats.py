@@ -19,21 +19,45 @@ def plot_category_distribution(df, target_column, category_column, path):
         df = df.dropna()
         if df.empty:
             return
-        plt.figure()  # No figsize specified here
         chategorical = (df[category_column].nunique() <= 10) or (df[category_column].dtype.name == "object")
         if chategorical:
-            sns.countplot(data=df, x=category_column, hue=target_column)
+            plot_cat_data(df, target_column, category_column, path, category_column)
+            for cat, data in df.groupby(category_column):
+                plot_cat_data(data, target_column, category_column, path, str(cat))
         else:
-            sns.histplot(data=df, x=category_column, hue=target_column, bins=100, kde=True)
-        plt.title(f'Distribution of {category_column} values with {target_column}')
-        plt.xlabel(category_column)
-        plt.ylabel('Count')
-        plt.legend(title=target_column, labels=df[target_column].unique().tolist())
-        image_dir = os.path.join(path, target_column)
-        os.makedirs(image_dir, exist_ok=True)
-        image_path = os.path.join(image_dir, category_column + '.png')
-        plt.savefig(image_path, dpi=150, bbox_inches='tight')  # Adjust DPI and quality as needed
-        plt.close()
+            plot_continous_data(df, target_column, category_column, path, category_column)
+            for cat, data in df.groupby(target_column):
+                plot_continous_data(data, target_column, category_column, path, str(cat))
+
+def plot_continous_data(df, target_column, category_column, path, cat):
+    if len(df)<=10:
+        return
+    plt.figure()  # No figsize specified here
+    sns.histplot(data=df, x=category_column, hue=target_column, bins=100, kde=True)
+    plt.title(f'Distribution of {category_column} values with {target_column}')
+    plt.xlabel(category_column)
+    plt.ylabel('Count')
+    plt.legend(title=target_column, labels=df[target_column].unique().tolist())
+    image_dir = os.path.join(path, target_column)
+    os.makedirs(image_dir, exist_ok=True)
+    image_path = os.path.join(image_dir, category_column + " " + str(cat) + '.png')
+    plt.savefig(image_path, dpi=150, bbox_inches='tight')  # Adjust DPI and quality as needed
+    plt.close()
+
+def plot_cat_data(df, target_column, category_column, path, cat):
+    if len(df)<=10:
+        return
+    plt.figure()  # No figsize specified here
+    sns.countplot(data=df, x=category_column, hue=target_column)
+    plt.title(f'Distribution of {category_column} values with {target_column}')
+    plt.xlabel(category_column)
+    plt.ylabel('Count')
+    plt.legend(title=target_column, labels=df[target_column].unique().tolist())
+    image_dir = os.path.join(path, target_column)
+    os.makedirs(image_dir, exist_ok=True)
+    image_path = os.path.join(image_dir, category_column + " " + cat + '.png')
+    plt.savefig(image_path, dpi=150, bbox_inches='tight')  # Adjust DPI and quality as needed
+    plt.close()
         
         
 # Assuming you have a DataFrame named df
