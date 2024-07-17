@@ -78,7 +78,7 @@ def extract_stats(target_columns, columns_dataset, relevant_df, filename):
         plot_category_distribution(relevant_df[relevant_df[target_columns[0]]], t_col, col, os.path.join(trr_path, filename.split(".")[0]))
 
 def fetch_data(filename, common_cols):
-    columns = ["AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION"]
+    columns = ["ETHCAT", "AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION"]
     target_columns = ["TRR_ID_CODE", "WL_ID_CODE"]
     columns_dataset = [c + filename.split(".")[0] for c in columns] 
     target_columns = [c + filename.split(".")[0] for c in target_columns]
@@ -96,7 +96,7 @@ def fetch_data(filename, common_cols):
     return target_columns,columns_dataset,relevant_df[relevant_df["PT_CODE"].isin(filtered_patients)]
 
 def fetch_tx_data(filename, common_cols):
-    columns = ["AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION", "TX_DATE", "INIT_DATE"]
+    columns = ["ETHCAT", "AGE_GROUP", "GENDER", "HGT_CM_CALC", "WGT_KG_CALC", "ETHNICITY", "EDUCATION", "TX_DATE", "INIT_DATE"]
     target_columns = ["TRR_ID_CODE", "WL_ID_CODE"]
     columns_dataset = [c + filename.split(".")[0] for c in columns] 
     target_columns = [c + filename.split(".")[0] for c in target_columns]
@@ -110,11 +110,11 @@ def fetch_tx_data(filename, common_cols):
 
 def all_combinations(elements):
     all_comb = []
-    for r in range(1, min(len(elements), 4)):
-        all_comb.extend(list(itertools.combinations(elements, r)))
+    for r in range(0, len(elements)):
+        all_comb.extend(list(itertools.combinations(elements, r+1)))
     return all_comb
 
-filenames = ["_intestine_data.csv", "_kidpan_data.csv", "_liver_data.csv", "_thoracic_data.csv"]
+filenames = ["_thoracic_data.csv"]
 file_interactions = all_combinations(filenames)
 common_cols = ["PT_CODE", "DONOR_ID"]
 def cols_parsing(cols):
@@ -128,6 +128,8 @@ for filenames in file_interactions:
     datasets = []
     for filename in filenames:
         target_column, column_dataset, relevant_df = fetch_data(filename, common_cols)
+        # {x: relevant_df[x].sum() for x in target_column}
+        # {x: relevant_df[x].sum()/len(relevant_df[x]) for x in target_column}
         target_columns.extend(target_column)
         columns_dataset.extend(column_dataset)
         datasets.append(relevant_df)
@@ -165,10 +167,15 @@ for filenames in file_interactions:
     extension = ""
     data["DELAY" + extension] = (data["TX_DATE" + extension] - data["INIT_DATE" + extension]).dt.days
     targets.append("DELAY" + extension)
+    print(f"Delay cutoff {data["DELAY" + extension].quantile(0.8)}")
+    data_len = len(data)
+    cutoff_data = data[data["INIT_DATE" + extension]>=data["INIT_DATE" + extension].max()-pd.to_timedelta(data["DELAY" + extension].quantile(0.8), unit='d')]
+    patients = cutoff_data["PT_CODE"].unique().tolist()
+    data = data[~data["PT_CODE"].isin(patients)]
+    print(f"Data cutoff fraction {len(data)/data_len}")
     data = data.drop(["TX_DATE" + extension, "INIT_DATE" + extension], axis=1)
-    
     filename = "concated_" + "_".join(filename.split(".")[0] for filename in filenames)
     for target in targets:
-        for col in [x for x in columns_dataset if all(col not in x for col in ["CALC", "TX_DATE", "INIT_DATE", "BMI"])]:
+        for col in [x for x in columns_dataset if all(col not in x for col in ["CALC", "TX_DATE", "INIT_DATE", "BMI", "ETHCAT"])]:
             print(filename, target, col)
             plot_category_distribution(data, col, target, os.path.join("test_data", filename))

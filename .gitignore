@@ -6,3 +6,6 @@ project/checkpoints/*
 *.ckpt
 *_data.csv
 .vscode/launch.json
+project/Data/*
+project/myenv/*
+project/project/*
