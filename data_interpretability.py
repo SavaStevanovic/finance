@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 
-from project.data_stats import columns_with_non_empty_percentage
+from project.columns_with_non_empty_percentage import columns_with_non_empty_percentage
 categorical  = [
 "WL Thoracic Diagnosis",
 "TCR CITIZENSHIP",
@@ -98,11 +98,19 @@ scalar = [
 ]
 
 data = pd.read_csv("project/_thoracic_data.csv")
+extension = "_thoracic_data"
+for x in ["INIT_DATE" , "TX_DATE"]:
+    data[x] = pd.to_datetime(data[x + extension])
+data["DELAY"] = (data["TX_DATE"] - data["INIT_DATE"]).dt.days
+s = len(data)
+data = data[data["INIT_DATE"]>=data["INIT_DATE"].max()-pd.to_timedelta(data["DELAY"].quantile(0.8), unit='d')]
+print(f"Cutoff of {(len(data))/s*100}%")
 data = data.drop(columns=[x for x in data.columns if "Unnamed" in x])
 with open("project/Data/SAS Dataset 202303/Thoracic/thoracic_data.json", 'r') as file:
     # Load JSON data from the file
     metadata = json.load(file)
 column_names_to_labels = metadata["column_names_to_labels"]
+column_names_to_labels["DELAY"]="DELAY"
 data.columns = [column_names_to_labels[x.replace("_thoracic_data", "")] for x in data.columns]
 trr_cols = columns_with_non_empty_percentage(data[~data["ENCRYPTED TRR_ID"].isna()], 0.8)
 wl_cols = columns_with_non_empty_percentage(data[~data["ENCRYPTED WL_ID"].isna()], 0.8)
@@ -134,7 +142,6 @@ from sklearn import tree
 
 df = final_data
 target_column = "LABEL"
-
 X = df.drop(target_column, axis=1)
 ignore_columns = [
     "ENCRYPTED PATIENT IDENTIFIER",
@@ -144,8 +151,12 @@ ignore_columns = [
     "Registration Removed for Deceased Donor Transplant",
 ]
 X = X[scalar + [x for x in X.columns if ((x in categorical) and (x in X.columns[X.nunique() < 10]))]]
-X = pd.get_dummies(X, columns=[x for x in X.columns if x in categorical])
+X = X.loc[:,~X.columns.duplicated()].copy()
+print("Model columsn are:", X.columns)
 X = X.drop([x for x in X.columns if any(c in x for c in ignore_columns)], axis=1)
+with open('./model_cols.json', 'w') as json_file:
+    json.dump(list(X.columns), json_file, indent=4)
+X = pd.get_dummies(X, columns=[x for x in X.columns if x in categorical])
 
 # Extract the target variable
 y = df[target_column]
