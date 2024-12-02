@@ -103,7 +103,9 @@ for x in ["INIT_DATE" , "TX_DATE"]:
     data[x] = pd.to_datetime(data[x + extension])
 data["DELAY"] = (data["TX_DATE"] - data["INIT_DATE"]).dt.days
 s = len(data)
-data = data[data["INIT_DATE"]>=data["INIT_DATE"].max()-pd.to_timedelta(data["DELAY"].quantile(0.8), unit='d')]
+cutoff_data = data[data["INIT_DATE"]>=data["INIT_DATE"].max()-pd.to_timedelta(data["DELAY"].quantile(0.8), unit='d')]
+patients = cutoff_data["PT_CODE"].unique().tolist()
+data = data[~data["PT_CODE"].isin(patients)]
 print(f"Cutoff of {(len(data))/s*100}%")
 data = data.drop(columns=[x for x in data.columns if "Unnamed" in x])
 with open("project/Data/SAS Dataset 202303/Thoracic/thoracic_data.json", 'r') as file:
@@ -127,6 +129,8 @@ data[good_columns].to_csv("good_data.csv")
 with open('./wll_cols.json', 'w') as json_file:
     json.dump(wl_cols, json_file, indent=4)
 
+with open('./trr_cols.json', 'w') as json_file:
+    json.dump(trr_cols, json_file, indent=4)
 print("Labeling")
 trr_patients = set(data[~data["ENCRYPTED TRR_ID"].isna()]["ENCRYPTED PATIENT IDENTIFIER"].unique().tolist())
 # data = data[~data["ENCRYPTED TRR_ID"].isna()]
@@ -140,9 +144,12 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn import tree
 
-df = final_data
 target_column = "LABEL"
-X = df.drop(target_column, axis=1)
+print("Patients getting trr %",final_data[target_column].sum()/len(final_data[target_column]))
+X = final_data.drop(target_column, axis=1)
+s = len(X)
+X = X.loc[:,~X.columns.duplicated()].copy()
+print(f"Droped {(len(X))/s*100}% as  duplicates" )
 ignore_columns = [
     "ENCRYPTED PATIENT IDENTIFIER",
     "WL REASON FOR REMOVAL FROM THE WAITING LIST",
@@ -151,15 +158,14 @@ ignore_columns = [
     "Registration Removed for Deceased Donor Transplant",
 ]
 X = X[scalar + [x for x in X.columns if ((x in categorical) and (x in X.columns[X.nunique() < 10]))]]
-X = X.loc[:,~X.columns.duplicated()].copy()
-print("Model columsn are:", X.columns)
+# print("Model columsn are:", X.columns)
 X = X.drop([x for x in X.columns if any(c in x for c in ignore_columns)], axis=1)
 with open('./model_cols.json', 'w') as json_file:
     json.dump(list(X.columns), json_file, indent=4)
 X = pd.get_dummies(X, columns=[x for x in X.columns if x in categorical])
 
 # Extract the target variable
-y = df[target_column]
+y = final_data[target_column]
 
 # Split the dataset into training and testing sets
 print("train_test_split")
